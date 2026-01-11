@@ -38,4 +38,3 @@ export const styles = StyleSheet.create({
         alignContent: 'center',
     },
 });
-//test commit

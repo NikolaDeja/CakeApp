@@ -65,4 +65,3 @@ export const styles = StyleSheet.create({
 
 });
 
-//test commit
