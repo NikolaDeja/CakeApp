@@ -4,12 +4,14 @@ import { View, Text } from 'react-native';
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import HomeScreen from "./components/HomeScreen/HomeScreen";
 import CreateCakeScreen from './components/CreateCakeScreen/CreateCakeScreen';
 import RecipeScreen from './components/RecipeScreen/RecepieScreen';
 import AddRecipeScreen from './components/AddRecipeScreen/AddRecipeScreen';
 import { supabase } from './lib/supabase';
+import { G } from 'react-native-svg';
 
 
 
@@ -35,6 +37,7 @@ export default function App() {
 }, []);
 
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
       <NavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Home">
@@ -45,6 +48,7 @@ export default function App() {
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 

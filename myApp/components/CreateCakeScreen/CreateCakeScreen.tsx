@@ -5,21 +5,69 @@ import { styles } from './CreateCakeScreen.styles';
 import Header from '../Header.tsx/Header';
 import { supabase } from '../../lib/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ScrollView } from 'react-native-gesture-handler';
+import { ScrollView, TextInput } from 'react-native-gesture-handler';
 
 type SelectItem = { key: string; value: string };
 
 export default function CreateCakeScreen({ navigation }: any) {
 
     const [caketype, setCaketype] = useState('');
-  const [layer1, setLayer1] = useState('');
-  const [layer2, setLayer2] = useState('');
-  const [layer3, setLayer3] = useState('');
+  const [layerCount, setLayerCount] = useState('1');
+  const [layers, setLayers] = useState<string[]>(['', '', '', '', '', '']);
+
+  const allergens = [
+  'Gluten',
+  'Dairy',
+  'Eggs',
+  'Nuts',
+  'Soy',
+  'Peanuts',
+];
+
+ const decorations = [
+  'Sprinkles',
+  'Chocolate Chips',
+  'Fruit Slices',
+  'Edible Flowers',
+  'Candy',
+  'Fondant Shapes',
+];
 
   const [cakeTypeOptions, setCakeTypeOptions] = useState<SelectItem[]>([]);
   const [creamOptions, setCreamOptions] = useState<SelectItem[]>([]);
+  const [selectedPortionSize, setSelectedPortionSize] = useState<'portions' | 'size' | ''>('');
+  const [selectedShape, setSelectedShape] = useState<'circle' | 'square' | 'rectangle' | 'heart' | ''>('');
+  const [selectedAllergens, setSelectedAllergens] = useState<string[]>([]);
+  const [selectedDecorations, setSelectedDecorations] = useState<string[]>([]);
+  const [outerLayer, setOuterLayer] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const layerCountNumber = layerCount
+    ? Math.min(6, Math.max(1, Number(layerCount)))
+    : 0;
+
+  const canCreate =
+    !!caketype &&
+    layerCountNumber > 0 &&
+    layers.slice(0, layerCountNumber).every((value) => !!value);
+
+  const toggleAllergen = (allergen: string) => {
+    setSelectedAllergens((prev) =>
+      prev.includes(allergen)
+        ? prev.filter((item) => item !== allergen)
+        : [...prev, allergen]
+    );
+  };
+
+  const toggleDecoration = (decoration: string) => {
+    setSelectedDecorations((prev) =>
+      prev.includes(decoration)
+        ? prev.filter((item) => item !== decoration)
+        : [...prev, decoration]
+    );
+  };
+
 
   const creamOptionsWithNone = useMemo(() => {
     return [{ key: 'None', value: 'Dont want this layer' }, ...creamOptions];
@@ -71,16 +119,11 @@ export default function CreateCakeScreen({ navigation }: any) {
     load();
   }, []);
 
-  const canCreate =
-    caketype &&
-    layer1 &&
-    (layer2 === '' || layer2) &&
-    (layer3 === '' || layer3);
-
-
     return (
       <LinearGradient
-                colors={[ '#FFE8DE', '#FFF7F3', '#F2D7E3']}
+                //colors={[ '#FFE8DE', '#FFF7F3', '#F2D7E3']}
+                //colors={[ '#FEF5EF', '#F8F8F8', '#FFE7F1']}
+                colors={[ '#FFF4ED', '#FEF5EF', '#FEF6F1', '#FDF7F3', '#FCF7F4', '#FBF8F6', '#FBF9F8', '#FAFAFA', '#FBF7F9', '#FCF4F7', '#FCF1F6', '#FDEDF4', '#FEEAF3', '#FEE7F1', '#FFE4F0' ]}
                 start={{ x: 0, y: 0 }}   // top-left
                 end={{ x: 1, y: 1 }}     // bottom-right
                 style={{ flex: 1 ,backgroundColor: '#FFF',
@@ -89,44 +132,218 @@ export default function CreateCakeScreen({ navigation }: any) {
         <ScrollView style={{backgroundColor: 'transparent'}}>
           <View>
               <Header />
-              <Text style={styles.text}>Select type of cake you want and all the flavours for the layers</Text>
-              <SelectList
-                  boxStyles={styles.tables}
-                  inputStyles={styles.tableText}
-                  setSelected={setCaketype}
-                  data={cakeTypeOptions}
-                  placeholder="Select Type of Cake"
-              />
-              <SelectList
-                  setSelected={setLayer1}
-                  data={creamOptions}
-                  placeholder="Select Flavour for First layer"
+              <Text style={styles.topText}>Here you can create</Text>
+              <Text style={styles.topText}>your custom cake!</Text>
+              <View style={styles.stepBox}>
+                <Text style={styles.stepsText}>Step 1: Portions or size</Text>
+                <View style={styles.buttonsContainer}>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.optionsButtons,
+                      (pressed || selectedPortionSize === 'portions') && styles.optionsButtonsHover,
+                    ]}
+                    onPress={() => {
+                      setSelectedPortionSize('portions');
+                    }}
+                  >
+                    <Text style={styles.optionsButtonsText}>Portions</Text>
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.optionsButtons,
+                      (pressed || selectedPortionSize === 'size') && styles.optionsButtonsHover,
+                    ]}
+                    onPress={() => {
+                      setSelectedPortionSize('size');
+                    }}
+                  >
+                    <Text style={styles.optionsButtonsText}>Size</Text>
+                  </Pressable>
+                </View>
+              
+                <TextInput
+                    style={[styles.tables, styles.tableText]}
+                    placeholder="16"
+                    keyboardType="numeric"
+                />
+              </View>
+              <View style={styles.stepBox}>
+                <Text style={styles.stepsText}>Step 2: Shape</Text>
+                <View style={styles.buttonsContainer}>
+                  <Pressable style={({pressed}) =>[
+                    styles.optionsButtons, 
+                    (pressed || selectedShape === 'circle') && styles.optionsButtonsHover]}
+                    onPress={() => setSelectedShape('circle')}
+                  >
+                    <Text style={styles.optionsButtonsText}>Circle</Text>
+                  </Pressable>
+                  <Pressable 
+                  style={({pressed}) =>[
+                    styles.optionsButtons, 
+                    (pressed || selectedShape === 'square') && styles.optionsButtonsHover]} 
+                    onPress={() => setSelectedShape('square')}
+                  >
+                    <Text style={styles.optionsButtonsText}>Square</Text>
+                  </Pressable>
+                </View>
+                <View style={styles.buttonsContainer}>
+                  <Pressable style={({pressed}) =>[
+                    styles.optionsButtons, 
+                    (pressed || selectedShape === 'rectangle') && styles.optionsButtonsHover]}
+                    onPress={() => setSelectedShape('rectangle')}
+                  >
+                    <Text style={styles.optionsButtonsText}>Rectangle</Text>
+                  </Pressable>
+                  <Pressable style={({pressed}) =>[
+                    styles.optionsButtons, 
+                    (pressed || selectedShape === 'heart') && styles.optionsButtonsHover]} 
+                    onPress={() => setSelectedShape('heart')}
+                  >
+                    <Text style={styles.optionsButtonsText}>Heart</Text>
+                  </Pressable>
+                </View>
+              </View>
+              <View style={styles.stepBox}>
+                <Text style={styles.stepsText}>Step 3: Allergenes to avoid</Text>
+                {(() => {
+                  const allergenPairs = [];
+                  for (let i = 0; i < allergens.length; i += 2) {
+                    allergenPairs.push(allergens.slice(i, i + 2));
+                  }
+                  return allergenPairs.map((pair, index) => (
+                    <View key={index} style={styles.allergenRow}>
+                      {pair.map((allergen) => {
+                        const isSelected = selectedAllergens.includes(allergen);
+                        return (
+                          <Pressable style={styles.allergenOption}
+                            key={allergen}
+                            onPress={() => toggleAllergen(allergen)}
+                          >
+                            <View style={styles.allergenContent}>
+                              <View style={styles.tickBox}>
+                                {isSelected && <Text style={styles.tickMark}>✓</Text>}
+                              </View>
+                              <Text style={styles.allergenOptionText}>{allergen}</Text>
+                            </View>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  ));
+                })()}
 
-                  boxStyles={styles.tables}
-                  inputStyles={styles.tableText}
-              />
-          
-              <SelectList
-                  setSelected={setLayer2}
-                  data={creamOptionsWithNone}
-                  placeholder="Select Flavour for Second layer"
-                  boxStyles={styles.tables}
-                  inputStyles={styles.tableText}
-              />
-              <SelectList
-                  setSelected={setLayer3}
-                  data={creamOptionsWithNone}
-                  placeholder="Select Flavour for Third layer"
+                  {/* Debug: see selected values */}
+                  <Text>Selected: {selectedAllergens.join(', ')}</Text>
+              </View>
+  
+              
+              <View style={styles.stepBox}>
+                <Text style={styles.stepsText}>Step 4: Number of layers</Text>
+                <TextInput
+                    style={[styles.tables, styles.tableText]}
+                    value={layerCount}
+                    onChangeText={(text) => {
+                      const digits = text.replace(/[^0-9]/g, '');
+                      if (!digits) {
+                        setLayerCount('');
+                        return;
+                      }
+                      const parsed = Math.min(6, Math.max(1, Number(digits)));
+                      setLayerCount(String(parsed));
+                    }}
+                    placeholder="Put in the number of layers (1-6)"
+                    keyboardType="numeric"
+                />
+              </View>
 
-                  boxStyles={styles.tables}
-                  inputStyles={styles.tableText}
-              />
+              <View style={styles.stepBox}>
+                <Text style={styles.stepsText}>Step 5: Cake type</Text>
+                <SelectList
+                    boxStyles={styles.tables}
+                    inputStyles={styles.tableText}
+                    setSelected={setCaketype}
+                    data={cakeTypeOptions}
+                    placeholder="Select Type of Cake"
+                />
+              </View>
+
+              <View style={styles.stepBox}>
+                <Text style={styles.stepsText}>Step 6: Flavours of layers</Text>
+                {Array.from({ length: layerCountNumber || 1 }, (_, idx) => {
+                  const ordinal = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth'][idx];
+                  return (
+                    <SelectList
+                      key={idx}
+                      setSelected={(value: string) => {
+                        setLayers((prev) => {
+                          const next = [...prev];
+                          next[idx] = value;
+                          return next;
+                        });
+                      }}
+                      data={idx === 0 ? creamOptions : creamOptionsWithNone}
+                      placeholder={`Select Flavour for ${ordinal} layer`}
+                      boxStyles={styles.tables}
+                      inputStyles={styles.tableText}
+                    />
+                  );
+                })}
+              </View>
+              <View style={styles.stepBox}>
+                <Text style={styles.stepsText}>Step 7: The outer layer</Text>
+                <SelectList
+                    setSelected={setOuterLayer}
+                    placeholder="Select Flavour for Outer layer"
+                    boxStyles={styles.tables}
+                    inputStyles={styles.tableText}
+                    data={[
+                      { key: 'fondant', value: 'fondant' },
+                      { key: 'icing', value: 'icing' },
+                    ]}
+                />
+              </View>
+              <View style={styles.stepBox}>
+                <Text style={styles.stepsText}>Step 8: Decorations</Text>
+                {(() => {
+                  const decorationsPairs = [];
+                  for (let i = 0; i < decorations.length; i += 2) {
+                    decorationsPairs.push(decorations.slice(i, i + 2));
+                  }
+                  return decorationsPairs.map((pair, index) => (
+                    <View key={index} style={styles.allergenRow}>
+                      {pair.map((decoration) => {
+                        const isSelected = selectedDecorations.includes(decoration);
+                        return (
+                          <Pressable style={styles.allergenOption}
+                            key={decoration}
+                            onPress={() => toggleDecoration(decoration)}
+                          >
+                            <View style={styles.allergenContent}>
+                              <View style={styles.tickBox}>
+                                {isSelected && <Text style={styles.tickMark}>✓</Text>}
+                              </View>
+                              <Text style={styles.allergenOptionText}>{decoration}</Text>
+                            </View>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  ));
+                })()}
+
+                  {/* Debug: see selected values */}
+                  <Text>Selected: {selectedAllergens.join(', ')}</Text>
+             </View>
+                  
               <Pressable style={styles.getRecipeButton} onPress={() =>
                   navigation.navigate("Recipe", {
                       caketype: caketype,
-                      layer1: layer1,
-                      layer2: layer2,
-                      layer3: layer3,
+                      layer1: layers[0],
+                      layer2: layers[1],
+                      layer3: layers[2],
+                      layerCount: layerCountNumber,
+                      layers: layers.slice(0, layerCountNumber),
+                      outerLayer: outerLayer,
                   })}>
                   <Text style={styles.getRecipeButtonText}>Get Your Recipe</Text>
               </Pressable>
@@ -134,5 +351,5 @@ export default function CreateCakeScreen({ navigation }: any) {
 
         </ScrollView>
       </LinearGradient>
-    );
+     );
 };

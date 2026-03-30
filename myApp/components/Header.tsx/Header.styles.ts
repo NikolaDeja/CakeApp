@@ -11,17 +11,20 @@ export const styles = StyleSheet.create({
     },
 
     headerText: {
-        fontSize: 20,
-        marginLeft: 30,
+        color: '#FF9ECD',
+        fontFamily: "Segoe UI",
+        fontSize: 32,
+        fontStyle: 'normal',
         fontWeight: 'bold',
-        color: 'pink',
+        lineHeight: 40,
+        marginLeft: 20,
     },
 
     badge: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: 'pink',
+    backgroundColor: '#FFACD4',
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 20,
