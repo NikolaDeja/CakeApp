@@ -1,28 +1,76 @@
 import { StyleSheet } from 'react-native';
 
 export const styles = StyleSheet.create({
-    AddRecipeText: {
-        fontSize: 25,
+    topText: {
+        fontSize: 24,
         fontWeight: 'bold',
-        marginTop: 20,
+        fontStyle: 'normal',
+        marginBottom: 10,
         textAlign: 'center',
-        color: 'pink',
+        fontFamily: 'Segoe UI',
+        color: '#333',
+        lineHeight: 32,
     },
-    filedName: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginTop: 15,
+    stepBox:{
+        borderRadius: 20,
+        backgroundColor: '#FFF4ED',
+        margin: 24,
+        padding: 20,
+        boxShadow: '0px 1px 3px 0px rgba(0, 0, 0, 0.1)',
+    },
+    stepsText: {
+        color: '#6d6c6c',
+        fontFamily: 'Segoe UI',
+        fontSize: 14,
+        fontStyle: 'normal',
+        fontWeight: 400,
+        lineHeight: 20, 
         marginLeft: 10,
     },
     fildBox: {
+        marginTop: 20,
+        width: '100%',
+        alignSelf: 'center',
         borderWidth: 2,
-        borderColor: 'pink',
-        borderRadius: 5,
+        borderColor: '#FF9ECD',
+        borderRadius: 15,
         padding: 10,
-        margin: 10,
-        fontSize: 12,
-        color: 'gray',
+        display: 'flex',
+        justifyContent: 'center',
     },
+
+     buttonsContainer:{
+        display: 'flex',
+        flexDirection: 'row',
+        justifyContent: 'center',
+        marginTop: 20,
+        alignItems: 'flex-start',
+        gap: 10,
+    },
+    optionsButtons:{
+    backgroundColor: '#FFC4E1',
+    padding: 10,
+    borderRadius: 15,
+    alignItems: 'center',
+    display: 'flex',
+    justifyContent: 'center',
+    width: '48%',
+    },
+
+    optionsButtonsHover: {
+    backgroundColor: '#FF9ECD',
+    //backgroundColor: '#E27D97',
+    },
+
+    optionsButtonsText:{
+    color: '#FFF',
+    textAlign: 'center',
+    fontFamily: "Segoe UI",
+    fontSize: 16,
+    fontWeight: 'bold',
+    lineHeight: 24, 
+    },
+
 
     ingedientText:{
         fontSize: 12,
@@ -39,45 +87,60 @@ export const styles = StyleSheet.create({
     },
 
     removeButton: {
-  width: 18,
-  height: 18,
-  borderRadius: 12,
-  borderWidth: 1,
-  borderColor: '#D9A0AE',
-  alignItems: 'center',
-  justifyContent: 'center',
-  marginTop: 6,     
-  marginRight: 10,   
-},
+    borderRadius: 100,
+    borderWidth: 1,
+    borderColor: '#FF9ECD',
+    backgroundColor: '#FF9ECD',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,     
+    marginRight: 10, 
+    paddingHorizontal: 6,  
+    paddingVertical: 3,
+    },
 
-removeButtonText: {
-  fontSize: 8,
-  fontWeight: '700',
-  color: '#D9A0AE',
-  lineHeight: 13,
-},
+    removeButtonText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFF',
+    lineHeight: 13,
+    },
+
     AddButton: {
         marginTop: 10,
         marginBottom: 10,
-        backgroundColor: 'pink',
+        backgroundColor: '#FFC4E1',
         padding: 5,
-        borderRadius: 10,
-        alignItems: 'center',
+        borderRadius: 15,
         width: '80%',
         alignSelf: 'center',
+        display: 'flex',
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 13.996,
     },
+    
     AddButtonText: {
-        color: 'white',
-        fontSize: 18,
+        color: '#FFF',
+        textAlign: 'center',
+        fontFamily: "Segoe UI",
+        fontSize: 16,
         fontWeight: 'bold',
-        alignContent: 'center',
+        lineHeight: 24, 
     },
+    addIcon: {
+        fontSize: 20,
+        fontWeight: 700,
+        color: 'white',
+    },
+
 
     saveButton: {
         marginTop: 30,
-        backgroundColor: '#E27D97',
+        backgroundColor: '#FF9ECD',
         padding: 10,
-        borderRadius: 10,
+        borderRadius: 25,
         alignItems: 'center',
         width: '80%',
         alignSelf: 'center',
@@ -87,10 +150,12 @@ removeButtonText: {
         backgroundColor: '#750c23ff',
     },
     saveButtonText: {
-        color: 'white',
-        fontSize: 20,
+       color: '#FFF',
+        textAlign: 'center',
+        fontFamily: "Segoe UI",
+        fontSize: 16,
         fontWeight: 'bold',
-        alignContent: 'center',
+        lineHeight: 24, 
     }
 });
 

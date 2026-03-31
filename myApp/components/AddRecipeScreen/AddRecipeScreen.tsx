@@ -18,6 +18,7 @@ export default function AddRecipeScreen({ navigation }: any) {
   const [estimatedTime, setEstimatedTime] = useState('30');
   const [instructions, setInstructions] = useState('');
   const [instructionsHeight, setInstructionsHeight] = useState(80);
+  const [selectedPortionSize, setSelectedPortionSize] = useState<'portions' | 'size' | ''>('');
 
   const [ingredients, setIngredients] = useState<IngredientInput[]>([
     { name: '', amount: '', unit: 'g' },
@@ -152,25 +153,62 @@ export default function AddRecipeScreen({ navigation }: any) {
             >
       <ScrollView>
          <Header />
-        <Text style={styles.AddRecipeText}>Add Your Recipe</Text>
+        <Text style={styles.topText}>Add Your Recipe</Text>
 
-        <Text style={styles.filedName}>Recipe name</Text>
-        <TextInput style={styles.fildBox} value={recipeName} onChangeText={setRecipeName} placeholder="e.g. Chocolate cream" />
+        <View style={styles.stepBox}>
+          <Text style={styles.stepsText}>Recipe name</Text>
+          <TextInput style={styles.fildBox} value={recipeName} onChangeText={setRecipeName} placeholder="e.g. Chocolate cream" />
+        </View>
 
-        <Text style={styles.filedName}>Type (write one: caketype / cream / filling)</Text>
+        <View style={styles.stepBox}>
+        <Text style={styles.stepsText}>Type (write one: caketype / cream / filling)</Text>
         <TextInput style={styles.fildBox}
           value={recipeType}
           onChangeText={(t) => setRecipeType(t as any)}
           placeholder="e.g. cream"
         />
-
-        <Text style={styles.filedName}>Portions</Text>
-        <TextInput style={styles.fildBox} value={portions} onChangeText={setPortions} keyboardType="numeric" placeholder="8" />
-
-        <Text style={styles.filedName}>Estimated time (minutes)</Text>
+        </View>
+        
+        <View style={styles.stepBox}>
+          <Text style={styles.stepsText}>Portions or size</Text>
+          <View style={styles.buttonsContainer}>
+                          <Pressable
+                            style={({ pressed }) => [
+                              styles.optionsButtons,
+                              (pressed || selectedPortionSize === 'portions') && styles.optionsButtonsHover,
+                            ]}
+                            onPress={() => {
+                              setSelectedPortionSize('portions');
+                            }}
+                          >
+                            <Text style={styles.optionsButtonsText}>Portions</Text>
+                          </Pressable>
+                          <Pressable
+                            style={({ pressed }) => [
+                              styles.optionsButtons,
+                              (pressed || selectedPortionSize === 'size') && styles.optionsButtonsHover,
+                            ]}
+                            onPress={() => {
+                              setSelectedPortionSize('size');
+                            }}
+                          >
+                            <Text style={styles.optionsButtonsText}>Size (cm)</Text>
+                          </Pressable>
+                          </View>
+                          <TextInput
+                              style={[styles.fildBox, styles.stepsText]}
+                              placeholder="16"
+                              keyboardType="numeric"
+                              />
+                        
+          </View>
+        <View style={styles.stepBox}> 
+        <Text style={styles.stepsText}>Estimated time (minutes)</Text>
         <TextInput style={styles.fildBox} value={estimatedTime} onChangeText={setEstimatedTime} keyboardType="numeric" placeholder="30" />
+        </View>
 
-        <Text style={styles.filedName}>Instructions</Text>
+        <View style={styles.stepBox}> 
+        <Text style={styles.stepsText}>Instructions</Text>
         <TextInput
           value={instructions}
           onChangeText={setInstructions}
@@ -186,8 +224,10 @@ export default function AddRecipeScreen({ navigation }: any) {
             },
           ]}
         />
+        </View>
 
-        <Text style={styles.filedName}>Ingredients</Text>
+        <View style={styles.stepBox}>
+        <Text style={styles.stepsText}>Ingredients</Text>
         {ingredients.map((ing, idx) => (
           <View key={idx}>
             <View style={styles.ingredientHeader}>
@@ -223,10 +263,16 @@ export default function AddRecipeScreen({ navigation }: any) {
           </View>
       
         ))}
-
-        <Pressable style={styles.AddButton} onPress={addIngredientRow}>
-          <Text style={styles.AddButtonText}>Add ingredient</Text>
-        </Pressable>
+          <View>
+            <Pressable style={styles.AddButton} onPress={addIngredientRow}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" style={styles.addIcon}>
+              <path d="M3.33252 7.99805H12.6636" stroke="white" stroke-width="1.33301" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M7.99805 3.33252V12.6636" stroke="white" stroke-width="1.33301" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <Text style={styles.AddButtonText}>Add ingredient</Text>
+            </Pressable>
+          </View>
+        </View>
 
         <Pressable  style={({ pressed }) => [styles.saveButton, pressed && styles.saveButtonPressed,]} 
         disabled={!canSave || saving} onPress={saveRecipe}>

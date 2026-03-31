@@ -49,7 +49,7 @@ export const styles = StyleSheet.create({
     },
 
     optionsButtonsHover: {
-    backgroundColor: '#E5A3C7',
+    backgroundColor: '#FF9ECD',
     //backgroundColor: '#E27D97',
     },
 
@@ -62,7 +62,7 @@ export const styles = StyleSheet.create({
     lineHeight: 24, 
     },
 
-    tables: {
+    filedBox: {
         marginTop: 20,
         width: '100%',
         alignSelf: 'center',
@@ -73,7 +73,7 @@ export const styles = StyleSheet.create({
         display: 'flex',
         justifyContent: 'center',
     },
-    tableText: {
+    fildText: {
         fontSize: 18,
         color: '#717182',
         fontFamily: 'Segoe UI',

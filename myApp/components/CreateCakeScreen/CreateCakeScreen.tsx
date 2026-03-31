@@ -157,12 +157,12 @@ export default function CreateCakeScreen({ navigation }: any) {
                       setSelectedPortionSize('size');
                     }}
                   >
-                    <Text style={styles.optionsButtonsText}>Size</Text>
+                    <Text style={styles.optionsButtonsText}>Size (cm)</Text>
                   </Pressable>
                 </View>
               
                 <TextInput
-                    style={[styles.tables, styles.tableText]}
+                    style={[styles.filedBox, styles.fildText]}
                     placeholder="16"
                     keyboardType="numeric"
                 />
@@ -240,7 +240,7 @@ export default function CreateCakeScreen({ navigation }: any) {
               <View style={styles.stepBox}>
                 <Text style={styles.stepsText}>Step 4: Number of layers</Text>
                 <TextInput
-                    style={[styles.tables, styles.tableText]}
+                    style={[styles.filedBox, styles.fildText]}
                     value={layerCount}
                     onChangeText={(text) => {
                       const digits = text.replace(/[^0-9]/g, '');
@@ -259,8 +259,8 @@ export default function CreateCakeScreen({ navigation }: any) {
               <View style={styles.stepBox}>
                 <Text style={styles.stepsText}>Step 5: Cake type</Text>
                 <SelectList
-                    boxStyles={styles.tables}
-                    inputStyles={styles.tableText}
+                    boxStyles={styles.filedBox}
+                    inputStyles={styles.fildText}
                     setSelected={setCaketype}
                     data={cakeTypeOptions}
                     placeholder="Select Type of Cake"
@@ -283,8 +283,8 @@ export default function CreateCakeScreen({ navigation }: any) {
                       }}
                       data={idx === 0 ? creamOptions : creamOptionsWithNone}
                       placeholder={`Select Flavour for ${ordinal} layer`}
-                      boxStyles={styles.tables}
-                      inputStyles={styles.tableText}
+                      boxStyles={styles.filedBox}
+                      inputStyles={styles.fildText}
                     />
                   );
                 })}
@@ -294,8 +294,8 @@ export default function CreateCakeScreen({ navigation }: any) {
                 <SelectList
                     setSelected={setOuterLayer}
                     placeholder="Select Flavour for Outer layer"
-                    boxStyles={styles.tables}
-                    inputStyles={styles.tableText}
+                    boxStyles={styles.filedBox}
+                    inputStyles={styles.fildText}
                     data={[
                       { key: 'fondant', value: 'fondant' },
                       { key: 'icing', value: 'icing' },
