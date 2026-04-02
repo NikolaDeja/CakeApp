@@ -3,7 +3,7 @@ import { View, Text, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { styles } from './Header.styles';
 import { SafeAreaView } from "react-native-safe-area-context";
-import Svg, { Path } from "react-native-svg";
+
 
 export default function Header() {
     const navigation: any = useNavigation();

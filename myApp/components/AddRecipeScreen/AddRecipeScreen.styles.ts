@@ -13,7 +13,7 @@ export const styles = StyleSheet.create({
     },
     stepBox:{
         borderRadius: 20,
-        backgroundColor: '#FFF4ED',
+        backgroundColor: '#FFF',
         margin: 24,
         padding: 20,
         boxShadow: '0px 1px 3px 0px rgba(0, 0, 0, 0.1)',

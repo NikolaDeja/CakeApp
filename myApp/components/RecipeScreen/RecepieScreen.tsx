@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, ActivityIndicator, ScrollView } from 'react-native';
-import Header from '../Header.tsx/Header';
+import Header from '../Header/Header';
+import Footer from '../Footer/Footer';
 import { supabase } from '../../lib/supabase';
 import { styles } from './RecipeScreen.styles';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -185,9 +186,9 @@ export default function RecipeScreen({ route }: any) {
             style={{ flex: 1 ,backgroundColor: '#FFF',
             shadowOpacity: 0.05}}
             >
-
-    <ScrollView>
-      <Header />
+    <View style={{ flex: 1 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 10 }}>
+        <Header />
 
       {loading ? (
         <ActivityIndicator />
@@ -210,6 +211,8 @@ export default function RecipeScreen({ route }: any) {
       )}
     
     </ScrollView>
+      <Footer />
+    </View>
     </LinearGradient>
   );
 }

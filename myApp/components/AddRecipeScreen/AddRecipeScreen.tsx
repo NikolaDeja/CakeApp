@@ -2,7 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, Alert } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { styles } from './AddRecipeScreen.styles';
-import Header from '../Header.tsx/Header';
+import Header from '../Header/Header';
+import Footer from '../Footer/Footer';
 import { LinearGradient } from 'expo-linear-gradient';
 
 type IngredientInput = {
@@ -145,14 +146,16 @@ export default function AddRecipeScreen({ navigation }: any) {
 
   return (
       <LinearGradient
-            colors={['#FFF5F0', '#FFFAF7', '#FBEFF4']}
+            //colors={['#FFF5F0', '#FFFAF7', '#FBEFF4']}
+            colors={[ '#FFF4ED', '#FEF5EF', '#FEF6F1', '#FDF7F3', '#FCF7F4', '#FBF8F6', '#FBF9F8', '#FAFAFA', '#FBF7F9', '#FCF4F7', '#FCF1F6', '#FDEDF4', '#FEEAF3', '#FEE7F1', '#FFE4F0' ]}
             start={{ x: 0, y: 0 }}   // top-left
             end={{ x: 1, y: 1 }}     // bottom-right
             style={{ flex: 1 ,backgroundColor: '#FFF',
             shadowOpacity: 0.05}}
             >
-      <ScrollView>
-         <Header />
+      <View style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={{ paddingBottom: 10 }}>
+           <Header />
         <Text style={styles.topText}>Add Your Recipe</Text>
 
         <View style={styles.stepBox}>
@@ -279,6 +282,8 @@ export default function AddRecipeScreen({ navigation }: any) {
           <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Save recipe'}</Text>
         </Pressable>
       </ScrollView>
+      <Footer />
+      </View>
       </LinearGradient>
       
   );
