@@ -13,17 +13,14 @@ type SelectItem = { key: string; value: string };
 export default function CreateCakeScreen({ navigation }: any) {
 
     const [caketype, setCaketype] = useState('');
+  const [caketype2, setCaketype2] = useState('');
+  const [showSecondCakeType, setShowSecondCakeType] = useState(false);
   const [layerCount, setLayerCount] = useState('1');
   const [layers, setLayers] = useState<string[]>(['', '', '', '', '', '']);
-
-  const allergens = [
-  'Gluten',
-  'Dairy',
-  'Eggs',
-  'Nuts',
-  'Soy',
-  'Peanuts',
-];
+  const [portionSize, setPortionSize] = useState('');
+  const [portionSizeError, setPortionSizeError] = useState<string | null>(null);
+  const [allergensList, setAllergensList] = useState<string[]>([]);
+  const [layerCountError, setLayerCountError] = useState<string | null>(null);
 
  const decorations = [
   'Sprinkles',
@@ -51,7 +48,12 @@ export default function CreateCakeScreen({ navigation }: any) {
   const canCreate =
     !!caketype &&
     layerCountNumber > 0 &&
-    layers.slice(0, layerCountNumber).every((value) => !!value);
+    layers.slice(0, layerCountNumber).every((value) => !!value) &&
+    selectedPortionSize &&
+    !!portionSize &&
+    !portionSizeError &&
+    !layerCountError &&
+    !!layerCount;
 
   const toggleAllergen = (allergen: string) => {
     setSelectedAllergens((prev) =>
@@ -82,7 +84,7 @@ export default function CreateCakeScreen({ navigation }: any) {
       try {
         // Fetch cake types
         const cakeRes = await supabase
-          .from('recipe')
+          .from('recipes')
           .select('name')
           .eq('type', 'cake')
           .order('name', { ascending: true });
@@ -91,12 +93,20 @@ export default function CreateCakeScreen({ navigation }: any) {
 
         // Fetch creams
         const creamRes = await supabase
-          .from('recipe')
+          .from('recipes')
           .select('name')
           .eq('type', 'cream')
           .order('name', { ascending: true });
 
         if (creamRes.error) throw creamRes.error;
+
+        // Fetch allergens
+        const allergensRes = await supabase
+          .from('allergens')
+          .select('name')
+          .order('name', { ascending: true });
+
+        if (allergensRes.error) throw allergensRes.error;
 
         const cakeItems: SelectItem[] = (cakeRes.data ?? []).map((r: any) => ({
           key: r.name,
@@ -108,8 +118,11 @@ export default function CreateCakeScreen({ navigation }: any) {
           value: r.name,
         }));
 
+        const allergenItems: string[] = (allergensRes.data ?? []).map((a: any) => a.name);
+
         setCakeTypeOptions(cakeItems);
         setCreamOptions(creamItems);
+        setAllergensList(allergenItems);
       } catch (e: any) {
         setError(e?.message ?? 'Failed to load recipes');
       } finally {
@@ -146,6 +159,7 @@ export default function CreateCakeScreen({ navigation }: any) {
                     ]}
                     onPress={() => {
                       setSelectedPortionSize('portions');
+                      setPortionSizeError(null);
                     }}
                   >
                     <Text style={styles.optionsButtonsText}>Portions</Text>
@@ -157,18 +171,44 @@ export default function CreateCakeScreen({ navigation }: any) {
                     ]}
                     onPress={() => {
                       setSelectedPortionSize('size');
+                      setPortionSizeError(null);
                     }}
                   >
                     <Text style={styles.optionsButtonsText}>Size (cm)</Text>
                   </Pressable>
                 </View>
               
-                <TextInput
-                    style={[styles.filedBox, styles.fildText]}
-                    placeholder="16"
-                    keyboardType="numeric"
-                />
+                {selectedPortionSize && (
+                  <>
+                    <TextInput
+                      style={[styles.filedBox, styles.fildText]}
+                      placeholder={selectedPortionSize === 'portions' ? "e.g. 8, 12, 16" : "e.g. 20, 25, 30"}
+                      keyboardType="numeric"
+                      value={portionSize}
+                      onChangeText={(text) => {
+                        // Remove non-digits
+                        const digits = text.replace(/[^0-9]/g, '');
+                        
+                        if (digits === '') {
+                          setPortionSize('');
+                          setPortionSizeError(null);
+                        } else {
+                          const num = parseInt(digits, 10);
+                          
+                          // Validate: must be integer > 0
+                          if (num > 0) {
+                            setPortionSize(String(num));
+                            setPortionSizeError(null);
+                          } else {
+                            setPortionSizeError('Must be greater than 0');
+                          }
+                        }
+                      }}
+                    />
+                  </>
+                )}
               </View>
+              
               <View style={styles.stepBox}>
                 <Text style={styles.stepsText}>Step 2: Shape</Text>
                 <View style={styles.buttonsContainer}>
@@ -209,8 +249,8 @@ export default function CreateCakeScreen({ navigation }: any) {
                 <Text style={styles.stepsText}>Step 3: Allergenes to avoid</Text>
                 {(() => {
                   const allergenPairs = [];
-                  for (let i = 0; i < allergens.length; i += 2) {
-                    allergenPairs.push(allergens.slice(i, i + 2));
+                  for (let i = 0; i < allergensList.length; i += 2) {
+                    allergenPairs.push(allergensList.slice(i, i + 2));
                   }
                   return allergenPairs.map((pair, index) => (
                     <View key={index} style={styles.allergenRow}>
@@ -245,17 +285,44 @@ export default function CreateCakeScreen({ navigation }: any) {
                     style={[styles.filedBox, styles.fildText]}
                     value={layerCount}
                     onChangeText={(text) => {
+                      // Only allow digits
                       const digits = text.replace(/[^0-9]/g, '');
-                      if (!digits) {
+                      
+                      if (digits === '') {
                         setLayerCount('');
+                        setLayerCountError(null);
                         return;
                       }
-                      const parsed = Math.min(6, Math.max(1, Number(digits)));
-                      setLayerCount(String(parsed));
+                      
+                      const num = Number(digits);
+                      
+                      // Validate: must be between 1 and 6
+                      if (num < 1) {
+                        setLayerCountError('Minimum 1 layer required');
+                        setLayerCount('');
+                      } else if (num > 6) {
+                        setLayerCountError('Maximum 6 layers allowed');
+                        // Set to 6 if they try to enter more
+                        setLayerCount('6');
+                      } else {
+                        setLayerCount(String(num));
+                        setLayerCountError(null);
+                      }
                     }}
-                    placeholder="Put in the number of layers (1-6)"
+                    placeholder="Enter 1 to 6"
                     keyboardType="numeric"
+                    maxLength={1}
                 />
+                {layerCountError && (
+                  <Text style={{ color: 'red', marginTop: 8, fontSize: 12 }}>
+                    ⚠ {layerCountError}
+                  </Text>
+                )}
+                {layerCount && !layerCountError && (
+                  <Text style={{ color: 'green', marginTop: 8, fontSize: 12 }}>
+                    ✓ {layerCount} layers selected
+                  </Text>
+                )}
               </View>
 
               <View style={styles.stepBox}>
@@ -265,8 +332,40 @@ export default function CreateCakeScreen({ navigation }: any) {
                     inputStyles={styles.fildText}
                     setSelected={setCaketype}
                     data={cakeTypeOptions}
-                    placeholder="Select Type of Cake"
+                    placeholder="Select First Cake Type"
                 />
+                
+                {caketype && !showSecondCakeType && (
+                  <Pressable 
+                    style={[styles.optionsButtons, { marginTop: 12 }]}
+                    onPress={() => setShowSecondCakeType(true)}
+                  >
+                    <Text style={styles.optionsButtonsText}>+ Add Second Cake Type</Text>
+                  </Pressable>
+                )}
+                
+                {showSecondCakeType && (
+                  <>
+                    <SelectList
+                        boxStyles={styles.filedBox}
+                        inputStyles={styles.fildText}
+                        setSelected={setCaketype2}
+                        data={cakeTypeOptions}
+                        placeholder="Select Second Cake Type"
+                    />
+                    {caketype2 && (
+                      <Pressable 
+                        style={[styles.optionsButtons, { marginTop: 12, backgroundColor: '#ffcccc' }]}
+                        onPress={() => {
+                          setCaketype2('');
+                          setShowSecondCakeType(false);
+                        }}
+                      >
+                        <Text style={styles.optionsButtonsText}>✕ Remove Second Type</Text>
+                      </Pressable>
+                    )}
+                  </>
+                )}
               </View>
 
               <View style={styles.stepBox}>
@@ -339,7 +438,11 @@ export default function CreateCakeScreen({ navigation }: any) {
                   
               <Pressable style={styles.getRecipeButton} onPress={() =>
                   navigation.navigate("Recipe", {
+                      selectedPortionSize: selectedPortionSize,
+                      portionSize: portionSize,
+                      selectedShape: selectedShape,
                       caketype: caketype,
+                      caketype2: caketype2,
                       layer1: layers[0],
                       layer2: layers[1],
                       layer3: layers[2],
