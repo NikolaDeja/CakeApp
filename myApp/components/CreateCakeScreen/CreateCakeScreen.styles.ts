@@ -62,6 +62,18 @@ export const styles = StyleSheet.create({
     lineHeight: 24, 
     },
 
+    secondCakeButton:{
+        backgroundColor: '#FFC4E1',
+        padding: 10,
+        borderRadius: 15,
+        alignItems: 'center',
+        display: 'flex',
+        justifyContent: 'center',
+        alignSelf: 'center',
+        marginTop: 12,
+        width: '100%',
+    },
+
     filedBox: {
         marginTop: 20,
         width: '100%',

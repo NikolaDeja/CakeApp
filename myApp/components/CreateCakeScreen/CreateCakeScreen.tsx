@@ -82,23 +82,32 @@ export default function CreateCakeScreen({ navigation }: any) {
       setError(null);
 
       try {
-        // Fetch cake types
-        const cakeRes = await supabase
+        // Fetch all recipes with their types via recipe_type_id foreign key
+        const recipesRes = await supabase
           .from('recipes')
-          .select('name')
-          .eq('type', 'cake')
+          .select('id, name, recipe_types!fk_recipes_recipe_type(code)')
           .order('name', { ascending: true });
 
-        if (cakeRes.error) throw cakeRes.error;
+        console.log('Recipes response:', recipesRes);
 
-        // Fetch creams
-        const creamRes = await supabase
-          .from('recipes')
-          .select('name')
-          .eq('type', 'cream')
-          .order('name', { ascending: true });
+        if (recipesRes.error) throw recipesRes.error;
 
-        if (creamRes.error) throw creamRes.error;
+        // Filter recipes by type code and create dropdown options
+        const cakeRecipes = (recipesRes.data ?? []).filter((r: any) => r.recipe_types?.code === 'cake_base');
+        const creamRecipes = (recipesRes.data ?? []).filter((r: any) => r.recipe_types?.code === 'cream');
+
+        console.log('Cake recipes:', cakeRecipes);
+        console.log('Cream recipes:', creamRecipes);
+
+        const cakeItems: SelectItem[] = cakeRecipes.map((r: any) => ({
+          key: r.name,
+          value: r.name,
+        }));
+
+        const creamItems: SelectItem[] = creamRecipes.map((r: any) => ({
+          key: r.name,
+          value: r.name,
+        }));
 
         // Fetch allergens
         const allergensRes = await supabase
@@ -107,16 +116,6 @@ export default function CreateCakeScreen({ navigation }: any) {
           .order('name', { ascending: true });
 
         if (allergensRes.error) throw allergensRes.error;
-
-        const cakeItems: SelectItem[] = (cakeRes.data ?? []).map((r: any) => ({
-          key: r.name,
-          value: r.name,
-        }));
-
-        const creamItems: SelectItem[] = (creamRes.data ?? []).map((r: any) => ({
-          key: r.name,
-          value: r.name,
-        }));
 
         const allergenItems: string[] = (allergensRes.data ?? []).map((a: any) => a.name);
 
@@ -337,7 +336,7 @@ export default function CreateCakeScreen({ navigation }: any) {
                 
                 {caketype && !showSecondCakeType && (
                   <Pressable 
-                    style={[styles.optionsButtons, { marginTop: 12 }]}
+                    style={styles.secondCakeButton}
                     onPress={() => setShowSecondCakeType(true)}
                   >
                     <Text style={styles.optionsButtonsText}>+ Add Second Cake Type</Text>
@@ -355,7 +354,7 @@ export default function CreateCakeScreen({ navigation }: any) {
                     />
                     {caketype2 && (
                       <Pressable 
-                        style={[styles.optionsButtons, { marginTop: 12, backgroundColor: '#ffcccc' }]}
+                        style={styles.secondCakeButton}
                         onPress={() => {
                           setCaketype2('');
                           setShowSecondCakeType(false);
