@@ -17,22 +17,21 @@ export default function CreateCakeScreen({ navigation }: any) {
   const [showSecondCakeType, setShowSecondCakeType] = useState(false);
   const [layerCount, setLayerCount] = useState('1');
   const [layers, setLayers] = useState<string[]>(['', '', '', '', '', '']);
+  const [layerTypes, setLayerTypes] = useState<string[]>(['', '', '', '', '', '']);
   const [portionSize, setPortionSize] = useState('');
   const [portionSizeError, setPortionSizeError] = useState<string | null>(null);
   const [allergensList, setAllergensList] = useState<string[]>([]);
   const [layerCountError, setLayerCountError] = useState<string | null>(null);
 
- const decorations = [
-  'Sprinkles',
-  'Chocolate Chips',
-  'Fruit Slices',
-  'Edible Flowers',
-  'Candy',
-  'Fondant Shapes',
-];
+
 
   const [cakeTypeOptions, setCakeTypeOptions] = useState<SelectItem[]>([]);
   const [creamOptions, setCreamOptions] = useState<SelectItem[]>([]);
+  const [fillingOptions, setFillingOptions] = useState<SelectItem[]>([]);
+  const [ganacheOptions, setGanacheOptions] = useState<SelectItem[]>([]);
+  const [crunchOptions, setCrunchOptions] = useState<SelectItem[]>([]);
+  const [outerCoatingOptions, setOuterCoatingOptions] = useState<SelectItem[]>([]);
+  const [decorationsOptions, setDecorationsOptions] = useState<SelectItem[]>([]);
   const [selectedPortionSize, setSelectedPortionSize] = useState<'portions' | 'size' | ''>('');
   const [selectedShape, setSelectedShape] = useState<'circle' | 'square' | 'rectangle' | 'heart' | ''>('');
   const [selectedAllergens, setSelectedAllergens] = useState<string[]>([]);
@@ -72,65 +71,110 @@ export default function CreateCakeScreen({ navigation }: any) {
   };
 
 
-  const creamOptionsWithNone = useMemo(() => {
-    return [{ key: 'None', value: 'Dont want this layer' }, ...creamOptions];
-  }, [creamOptions]);
+  const getFlavorOptionsByType = (layerType: string, isFirstLayer: boolean): SelectItem[] => {
+    let options: SelectItem[] = [];
+    
+    switch(layerType) {
+      case 'Cream':
+        options = creamOptions;
+        break;
+      case 'Filling':
+        options = fillingOptions;
+        break;
+      case 'Ganash':
+        options = ganacheOptions;
+        break;
+      case 'Crunch':
+        options = crunchOptions;
+        break;
+      default:
+        options = [];
+    }
+    
+    return isFirstLayer ? options : [{ key: 'None', value: 'Dont want this layer' }, ...options];
+  };
 
+
+  // Store all recipes with their ingredients and allergens
+  const [allRecipes, setAllRecipes] = useState<any[]>([]);
+
+  // Fetch recipes with their ingredients and allergens
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       setError(null);
-
       try {
-        // Fetch all recipes with their types via recipe_type_id foreign key
+        // Fetch all recipes with their types, ingredients, and allergens
         const recipesRes = await supabase
           .from('recipes')
-          .select('id, name, recipe_types!fk_recipes_recipe_type(code)')
+          .select(`
+            id, name, recipe_types!fk_recipes_recipe_type(code),
+            recipe_ingredients(
+              ingredient_id,
+              ingredients(
+                name,
+                ingredient_allergens(
+                  allergens(name)
+                )
+              )
+            )
+          `)
           .order('name', { ascending: true });
-
-        console.log('Recipes response:', recipesRes);
 
         if (recipesRes.error) throw recipesRes.error;
 
-        // Filter recipes by type code and create dropdown options
-        const cakeRecipes = (recipesRes.data ?? []).filter((r: any) => r.recipe_types?.code === 'cake_base');
-        const creamRecipes = (recipesRes.data ?? []).filter((r: any) => r.recipe_types?.code === 'cream');
+        setAllRecipes(recipesRes.data ?? []);
 
-        console.log('Cake recipes:', cakeRecipes);
-        console.log('Cream recipes:', creamRecipes);
-
-        const cakeItems: SelectItem[] = cakeRecipes.map((r: any) => ({
-          key: r.name,
-          value: r.name,
-        }));
-
-        const creamItems: SelectItem[] = creamRecipes.map((r: any) => ({
-          key: r.name,
-          value: r.name,
-        }));
+        // Decorations (no filtering needed)
+        const decorations = (recipesRes.data ?? []).filter((r: any) => r.recipe_types?.code === 'decoration').map((r: any) => r.name);
+        setDecorationsOptions(decorations.map((name: string) => ({ key: name, value: name })));
 
         // Fetch allergens
         const allergensRes = await supabase
           .from('allergens')
           .select('name')
           .order('name', { ascending: true });
-
         if (allergensRes.error) throw allergensRes.error;
-
-        const allergenItems: string[] = (allergensRes.data ?? []).map((a: any) => a.name);
-
-        setCakeTypeOptions(cakeItems);
-        setCreamOptions(creamItems);
-        setAllergensList(allergenItems);
+        setAllergensList((allergensRes.data ?? []).map((a: any) => a.name));
       } catch (e: any) {
         setError(e?.message ?? 'Failed to load recipes');
       } finally {
         setLoading(false);
       }
     };
-
     load();
   }, []);
+
+  // Helper to check if a recipe contains any selected allergens
+  const recipeHasAllergen = (recipe: any, selectedAllergens: string[]) => {
+    if (!selectedAllergens.length) return false;
+    for (const ri of recipe.recipe_ingredients ?? []) {
+      const ingredient = ri.ingredients;
+      if (!ingredient) continue;
+      for (const ia of ingredient.ingredient_allergens ?? []) {
+        if (ia.allergens && selectedAllergens.includes(ia.allergens.name)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  // Filter and set options whenever allergens or recipes change
+  useEffect(() => {
+    const filterAndSetOptions = () => {
+      const filterRecipes = (typeCode: string) =>
+        allRecipes.filter((r: any) => r.recipe_types?.code === typeCode && !recipeHasAllergen(r, selectedAllergens));
+
+      setCakeTypeOptions(filterRecipes('cake_base').map((r: any) => ({ key: r.name, value: r.name })));
+      setCreamOptions(filterRecipes('cream').map((r: any) => ({ key: r.name, value: r.name })));
+      setFillingOptions(filterRecipes('filling').map((r: any) => ({ key: r.name, value: r.name })));
+      setGanacheOptions(filterRecipes('ganache').map((r: any) => ({ key: r.name, value: r.name })));
+      setCrunchOptions(filterRecipes('crunch').map((r: any) => ({ key: r.name, value: r.name })));
+      setOuterCoatingOptions(filterRecipes('outer_coating').map((r: any) => ({ key: r.name, value: r.name })));
+    };
+    filterAndSetOptions();
+  }, [allRecipes, selectedAllergens]);
 
     return (
       <LinearGradient
@@ -371,21 +415,84 @@ export default function CreateCakeScreen({ navigation }: any) {
                 <Text style={styles.stepsText}>Step 6: Flavours of layers</Text>
                 {Array.from({ length: layerCountNumber || 1 }, (_, idx) => {
                   const ordinal = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth'][idx];
+                  const layerTypeOptions = ['Cream', 'Filling', 'Ganash', 'Crunch'];
                   return (
-                    <SelectList
-                      key={idx}
-                      setSelected={(value: string) => {
-                        setLayers((prev) => {
-                          const next = [...prev];
-                          next[idx] = value;
-                          return next;
-                        });
-                      }}
-                      data={idx === 0 ? creamOptions : creamOptionsWithNone}
-                      placeholder={`Select Flavour for ${ordinal} layer`}
-                      boxStyles={styles.filedBox}
-                      inputStyles={styles.fildText}
-                    />
+                    <View key={idx}>
+                      <Text style={[styles.stepsText, { marginTop: 20, color: '#333', fontWeight: 'bold' }]}>{ordinal} Layer</Text>
+                      <Text style={[styles.stepsText, { marginTop: 8, marginBottom: 8 }]}>Select Layer Type</Text>
+                      <View style={styles.buttonsContainer}>
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.optionsButtons,
+                            (pressed || layerTypes[idx] === 'Cream') && styles.optionsButtonsHover,
+                          ]}
+                          onPress={() => {
+                            const newLayerTypes = [...layerTypes];
+                            newLayerTypes[idx] = 'Cream';
+                            setLayerTypes(newLayerTypes);
+                          }}
+                        >
+                          <Text style={styles.optionsButtonsText}>Cream</Text>
+                        </Pressable>
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.optionsButtons,
+                            (pressed || layerTypes[idx] === 'Filling') && styles.optionsButtonsHover,
+                          ]}
+                          onPress={() => {
+                            const newLayerTypes = [...layerTypes];
+                            newLayerTypes[idx] = 'Filling';
+                            setLayerTypes(newLayerTypes);
+                          }}
+                        >
+                          <Text style={styles.optionsButtonsText}>Filling</Text>
+                        </Pressable>
+                      </View>
+                      <View style={styles.buttonsContainer}>
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.optionsButtons,
+                            (pressed || layerTypes[idx] === 'Ganash') && styles.optionsButtonsHover,
+                          ]}
+                          onPress={() => {
+                            const newLayerTypes = [...layerTypes];
+                            newLayerTypes[idx] = 'Ganash';
+                            setLayerTypes(newLayerTypes);
+                          }}
+                        >
+                          <Text style={styles.optionsButtonsText}>Ganash</Text>
+                        </Pressable>
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.optionsButtons,
+                            (pressed || layerTypes[idx] === 'Crunch') && styles.optionsButtonsHover,
+                          ]}
+                          onPress={() => {
+                            const newLayerTypes = [...layerTypes];
+                            newLayerTypes[idx] = 'Crunch';
+                            setLayerTypes(newLayerTypes);
+                          }}
+                        >
+                          <Text style={styles.optionsButtonsText}>Crunch</Text>
+                        </Pressable>
+                      </View>
+                      {layerTypes[idx] && (
+                        <SelectList
+                          key={`flavor-${idx}`}
+                          setSelected={(value: string) => {
+                            setLayers((prev) => {
+                              const next = [...prev];
+                              next[idx] = value;
+                              return next;
+                            });
+                          }}
+                          data={getFlavorOptionsByType(layerTypes[idx], idx === 0)}
+                          placeholder={`Select Flavour for ${ordinal} ${layerTypes[idx]} layer`}
+                          boxStyles={styles.filedBox}
+                          inputStyles={styles.fildText}
+                        />
+                      )}
+                    </View>
                   );
                 })}
               </View>
@@ -396,19 +503,16 @@ export default function CreateCakeScreen({ navigation }: any) {
                     placeholder="Select Flavour for Outer layer"
                     boxStyles={styles.filedBox}
                     inputStyles={styles.fildText}
-                    data={[
-                      { key: 'fondant', value: 'fondant' },
-                      { key: 'icing', value: 'icing' },
-                    ]}
+                    data={outerCoatingOptions}
                 />
               </View>
               <View style={styles.stepBox}>
                 <Text style={styles.stepsText}>Step 8: Decorations</Text>
                 {(() => {
                   const decorationsPairs = [];
-                  for (let i = 0; i < decorations.length; i += 2) {
-                    decorationsPairs.push(decorations.slice(i, i + 2));
-                  }
+                    for (let i = 0; i < decorationsOptions.length; i += 2) {
+                    decorationsPairs.push(decorationsOptions.slice(i, i + 2).map(item => item.value));
+                    }
                   return decorationsPairs.map((pair, index) => (
                     <View key={index} style={styles.allergenRow}>
                       {pair.map((decoration) => {
@@ -432,21 +536,21 @@ export default function CreateCakeScreen({ navigation }: any) {
                 })()}
 
                   {/* Debug: see selected values */}
-                  <Text>Selected: {selectedAllergens.join(', ')}</Text>
-             </View>
+                  <Text>Selected: {selectedDecorations.join(', ')}</Text>
+              </View>
+  
                   
               <Pressable style={styles.getRecipeButton} onPress={() =>
                   navigation.navigate("Recipe", {
                       selectedPortionSize: selectedPortionSize,
                       portionSize: portionSize,
                       selectedShape: selectedShape,
+                      selectedAllergens: selectedAllergens,
+                      layerCount: layerCountNumber,
                       caketype: caketype,
                       caketype2: caketype2,
-                      layer1: layers[0],
-                      layer2: layers[1],
-                      layer3: layers[2],
-                      layerCount: layerCountNumber,
                       layers: layers.slice(0, layerCountNumber),
+                      selectedDecorations: selectedDecorations,
                       outerLayer: outerLayer,
                   })}>
                   <Text style={styles.getRecipeButtonText}>Get Your Recipe</Text>

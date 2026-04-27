@@ -5,15 +5,7 @@ import Footer from '../Footer/Footer';
 import { supabase } from '../../lib/supabase';
 import { styles } from './RecipeScreen.styles';
 import { LinearGradient } from 'expo-linear-gradient';
-
-type RecipeRow = {
-  id: number;
-  name: string;
-  type: string | null;
-  portions: number;
-  instructions: string | null;
-  estimated_time: number | null;
-};
+import { calculateArea, scaleIngredientsByArea } from '../../lib/scalingUtils';
 
 type IngredientRow = {
   name: string;
@@ -21,91 +13,153 @@ type IngredientRow = {
   unit: string;
 };
 
-type GroupedLayerRecipe = {
-  recipe: RecipeRow;
-  layers: string[]; // e.g. ["Layer 1", "Layer 3"]
+type RecipeWithIngredients = {
+  id: number;
+  name: string;
+  instructions: string | null;
+  estimated_time: number | null;
   ingredients: IngredientRow[];
+  recipe_size_ref: Array<{
+    shape: string;
+    area_cm2: number | null;
+  }> | null;
+};
+
+type Section = {
+  title: string;
+  recipe: RecipeWithIngredients | null;
 };
 
 export default function RecipeScreen({ route }: any) {
-  const { caketype, layer1, layer2, layer3 } = route.params;
+  const {
+    caketype,
+    caketype2,
+    layers = [],
+    outerLayer,
+    selectedPortionSize,
+    portionSize,
+    selectedShape,
+  }: {
+    caketype?: string;
+    caketype2?: string;
+    layers?: string[];
+    outerLayer?: string;
+    selectedPortionSize?: 'portions' | 'size';
+    portionSize?: string;
+    selectedShape?: 'circle' | 'square' | 'rectangle' | 'heart';
+  } = route.params ?? {};
 
-  const [cakeRecipe, setCakeRecipe] = useState<RecipeRow | null>(null);
-  const [cakeIngredients, setCakeIngredients] = useState<IngredientRow[]>([]);
-
-  const [layer1Recipe, setLayer1Recipe] = useState<RecipeRow | null>(null);
-  const [layer2Recipe, setLayer2Recipe] = useState<RecipeRow | null>(null);
-  const [layer3Recipe, setLayer3Recipe] = useState<RecipeRow | null>(null);
-
-  const [layerIngredientsById, setLayerIngredientsById] = useState<Record<number, IngredientRow[]>>(
-    {}
-  );
-
+  const [recipesByName, setRecipesByName] = useState<Record<string, RecipeWithIngredients>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchOneRecipe = async (type: string, name: string) => {
-      const { data, error } = await supabase
-        .from('recipe')
-        .select('id,name,type,portions,instructions,estimated_time')
-        .eq('type', type)
-        .eq('name', name)
-        .maybeSingle();
-
-      if (error) throw error;
-      return data as RecipeRow | null;
-    };
-
-    const fetchIngredients = async (recipeId: number) => {
-      const { data, error } = await supabase
-        .from('recepie_ingredients')
-        .select('amount, unit, ingredients(name)')
-        .eq('recepie_id', recipeId);
-
-      if (error) throw error;
-
-      return (data ?? []).map((row: any) => ({
-        name: row.ingredients?.name ?? 'Unknown',
-        amount: row.amount,
-        unit: row.unit,
-      })) as IngredientRow[];
-    };
-
     const load = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // Base cake
-        const cake = await fetchOneRecipe('cake', caketype);
-        setCakeRecipe(cake);
-        setCakeIngredients(cake?.id ? await fetchIngredients(cake.id) : []);
-
-        // Layers (cream)
-        const l1 = await fetchOneRecipe('cream', layer1);
-        const l2 =
-          layer2 && layer2 !== 'None' ? await fetchOneRecipe('cream', layer2) : null;
-        const l3 =
-          layer3 && layer3 !== 'None' ? await fetchOneRecipe('cream', layer3) : null;
-
-        setLayer1Recipe(l1);
-        setLayer2Recipe(l2);
-        setLayer3Recipe(l3);
-
-        // Fetch ingredients only once per unique layer recipe id
-        const uniqueLayerIds = Array.from(
-          new Set([l1?.id, l2?.id, l3?.id].filter(Boolean) as number[])
+        const names = Array.from(
+          new Set(
+            [caketype, caketype2, ...layers, outerLayer].filter(
+              (n): n is string => !!n && n !== 'None'
+            )
+          )
         );
 
-        const entries = await Promise.all(
-          uniqueLayerIds.map(async (id) => [id, await fetchIngredients(id)] as const)
-        );
+        if (!names.length) {
+          setRecipesByName({});
+          return;
+        }
 
-        const byId: Record<number, IngredientRow[]> = {};
-        for (const [id, ings] of entries) byId[id] = ings;
-        setLayerIngredientsById(byId);
+        // Fetch recipes with their ingredients
+        const { data, error } = await supabase
+          .from('recipes')
+          .select(
+            `id, name, instructions, estimated_time,
+             recipe_ingredients(amount, unit, ingredients(name))`
+          )
+          .in('name', names);
+
+        if (error) throw error;
+
+        // Fetch size refs for these recipes
+        const recipeIds = (data ?? []).map((r: any) => r.id);
+        let sizeRefsByRecipeId: Record<number, any> = {};
+
+        if (recipeIds.length > 0) {
+          const { data: sizeRefs } = await supabase
+            .from('recipe_size_refs')
+            .select('recipe_id, shape, area_cm2')
+            .in('recipe_id', recipeIds);
+
+          sizeRefsByRecipeId = {};
+          for (const ref of (sizeRefs ?? [])) {
+            sizeRefsByRecipeId[ref.recipe_id] = ref;
+          }
+        }
+
+        // Calculate user's target size once (all recipes scale to same target)
+        let userArea: number | null = null;
+
+        if (selectedPortionSize && portionSize && selectedShape) {
+          if (selectedPortionSize === 'size') {
+            // Size mode: compute the area directly from the user's input.
+            // Only circle is supported for now — other shapes need width + length inputs.
+            if (selectedShape === 'circle') {
+              const diameter = parseFloat(portionSize);
+              if (diameter > 0) {
+                userArea = calculateArea('circle', diameter);
+              }
+            }
+          } else {
+            // Portions mode: look up the matching row in size_portion_guides.
+            try {
+              const { data: sizeData, error: sizeError } = await supabase
+                .from('size_portion_guides')
+                .select('area_cm2')
+                .eq('shape', selectedShape)
+                .eq('portions', parseInt(portionSize, 10))
+                .maybeSingle();
+
+              if (!sizeError && sizeData?.area_cm2) {
+                userArea = sizeData.area_cm2;
+              }
+            } catch (e: any) {
+              setError(`Error looking up user size: ${e.message}`);
+            }
+          }
+        }
+
+        // Transform recipes and apply scaling
+        const map: Record<string, RecipeWithIngredients> = {};
+        for (const row of (data ?? []) as any[]) {
+          let ingredients: IngredientRow[] = (row.recipe_ingredients ?? []).map((ri: any) => ({
+            name: ri.ingredients?.name ?? 'Unknown',
+            amount: ri.amount,
+            unit: ri.unit,
+          }));
+
+          // Apply scaling if user size is known and recipe has a reference area
+          if (userArea !== null && userArea > 0 && sizeRefsByRecipeId[row.id]) {
+            const recipeArea = sizeRefsByRecipeId[row.id].area_cm2;
+            if (recipeArea && recipeArea > 0) {
+              ingredients = scaleIngredientsByArea(ingredients, recipeArea, userArea);
+            }
+          }
+
+          map[row.name] = {
+            id: row.id,
+            name: row.name,
+            instructions: row.instructions ?? null,
+            estimated_time: row.estimated_time ?? null,
+            recipe_size_ref: sizeRefsByRecipeId[row.id] ? [sizeRefsByRecipeId[row.id]] : null,
+            ingredients,
+          };
+        }
+        setRecipesByName(map);
       } catch (e: any) {
+        console.error('Error loading recipes:', e);
         setError(e?.message ?? 'Failed to load recipes');
       } finally {
         setLoading(false);
@@ -113,41 +167,49 @@ export default function RecipeScreen({ route }: any) {
     };
 
     load();
-  }, [caketype, layer1, layer2, layer3]);
+  }, [caketype, caketype2, outerLayer, JSON.stringify(layers), selectedPortionSize, portionSize, selectedShape]);
 
-  const groupedLayerRecipes: GroupedLayerRecipe[] = useMemo(() => {
-    const uses: Array<{ layer: string; recipe: RecipeRow }> = [];
-    if (layer1Recipe) uses.push({ layer: 'Layer 1', recipe: layer1Recipe });
-    if (layer2Recipe) uses.push({ layer: 'Layer 2', recipe: layer2Recipe });
-    if (layer3Recipe) uses.push({ layer: 'Layer 3', recipe: layer3Recipe });
+  const sections: Section[] = useMemo(() => {
+    const result: Section[] = [];
 
-    const grouped = uses.reduce<Record<number, { recipe: RecipeRow; layers: string[] }>>(
-      (acc, u) => {
-        const id = u.recipe.id;
-        if (!acc[id]) acc[id] = { recipe: u.recipe, layers: [] };
-        acc[id].layers.push(u.layer);
-        return acc;
-      },
-      {}
-    );
+    if (caketype) {
+      result.push({ title: 'Cake base', recipe: recipesByName[caketype] ?? null });
+    }
+    if (caketype2) {
+      result.push({ title: 'Second cake base', recipe: recipesByName[caketype2] ?? null });
+    }
 
-    return Object.values(grouped).map(({ recipe, layers }) => ({
-      recipe,
-      layers,
-      ingredients: layerIngredientsById[recipe.id] ?? [],
-    }));
-  }, [layer1Recipe, layer2Recipe, layer3Recipe, layerIngredientsById]);
+    // Group layer positions by recipe name so duplicates render once.
+    const positionsByName = new Map<string, number[]>();
+    layers.forEach((name, idx) => {
+      if (!name || name === 'None') return;
+      const arr = positionsByName.get(name) ?? [];
+      arr.push(idx + 1);
+      positionsByName.set(name, arr);
+    });
+
+    for (const [name, positions] of positionsByName.entries()) {
+      const title =
+        positions.length === 1
+          ? `Layer ${positions[0]}`
+          : `Layers ${positions.join(', ')}`;
+      result.push({ title, recipe: recipesByName[name] ?? null });
+    }
+
+    if (outerLayer) {
+      result.push({ title: 'Outer layer', recipe: recipesByName[outerLayer] ?? null });
+    }
+
+    return result;
+  }, [caketype, caketype2, layers, outerLayer, recipesByName]);
 
   const Block = ({
     title,
     recipe,
-    ingredients,
   }: {
     title: string;
-    recipe: RecipeRow | null;
-    ingredients: IngredientRow[];
+    recipe: RecipeWithIngredients | null;
   }) => (
-
     <View>
       <Text style={styles.categoryText}>{title}</Text>
 
@@ -156,23 +218,25 @@ export default function RecipeScreen({ route }: any) {
       ) : (
         <View>
           <Text style={styles.recepieNameText}>{recipe.name}</Text>
-          <Text style={styles.portionsAndTimeText} >
-            Portions: {recipe.portions} • Time: {recipe.estimated_time ?? '—'} min
+          <Text style={styles.portionsAndTimeText}>
+            Time: {recipe.estimated_time ?? '—'} min
           </Text>
-            <View style={styles.ingredientBox}>
-          <Text style={styles.ingredientHeader}>Ingredients</Text>
-          {ingredients.length ? (
-            ingredients.map((ing, idx) => (
-              <Text style={styles.ingredientText} key={idx}>
-                • {ing.name}: {ing.amount} {ing.unit}
-              </Text>
-            ))
-          ) : (
-            <Text>No ingredients added.</Text>
-          )}
-            </View>
+          <View style={styles.ingredientBox}>
+            <Text style={styles.ingredientHeader}>Ingredients</Text>
+            {recipe.ingredients.length ? (
+              recipe.ingredients.map((ing, idx) => (
+                <Text style={styles.ingredientText} key={idx}>
+                  • {ing.name}: {ing.amount} {ing.unit}
+                </Text>
+              ))
+            ) : (
+              <Text>No ingredients added.</Text>
+            )}
+          </View>
           <Text style={styles.instructiontHeader}>Instructions</Text>
-          <Text style={styles.instructionText}>{recipe.instructions ?? 'No instructions.'}</Text>
+          <Text style={styles.instructionText}>
+            {recipe.instructions ?? 'No instructions.'}
+          </Text>
         </View>
       )}
     </View>
@@ -180,40 +244,29 @@ export default function RecipeScreen({ route }: any) {
 
   return (
     <LinearGradient
-            colors={['#FFF5F0', '#FFFAF7', '#FBEFF4']}
-            start={{ x: 0, y: 0 }}   // top-left
-            end={{ x: 1, y: 1 }}     // bottom-right
-            style={{ flex: 1 ,backgroundColor: '#FFF',
-            shadowOpacity: 0.05}}
-            >
-    <View style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 10 }}>
-        <Header />
+      colors={['#FFF5F0', '#FFFAF7', '#FBEFF4']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={{ flex: 1, backgroundColor: '#FFF', shadowOpacity: 0.05 }}
+    >
+      <View style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={{ paddingBottom: 10 }}>
+          <Header />
 
-      {loading ? (
-        <ActivityIndicator />
-      ) : error ? (
-        <Text>Error: {error}</Text>
-      ) : (
-        <View>
-          <Block title="Cake recipe" recipe={cakeRecipe} ingredients={cakeIngredients} />
-
-          {/* Grouped layers: if same cream chosen multiple times, it shows once */}
-          {groupedLayerRecipes.map((g) => (
-            <Block
-              key={g.recipe.id}
-              title={`Flavour (used in: ${g.layers.join(', ')})`}
-              recipe={g.recipe}
-              ingredients={g.ingredients}
-            />
-          ))}
-        </View>
-      )}
-    
-    </ScrollView>
-      <Footer />
-    </View>
+          {loading ? (
+            <ActivityIndicator />
+          ) : error ? (
+            <Text>Error: {error}</Text>
+          ) : (
+            <View>
+              {sections.map((s, idx) => (
+                <Block key={`${s.title}-${idx}`} title={s.title} recipe={s.recipe} />
+              ))}
+            </View>
+          )}
+        </ScrollView>
+        <Footer />
+      </View>
     </LinearGradient>
   );
 }
-

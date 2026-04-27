@@ -1,5 +1,5 @@
 import 'react-native-gesture-handler';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { View, Text } from 'react-native';
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { NavigationContainer } from "@react-navigation/native";
@@ -20,22 +20,22 @@ export type RootStackParamList = {
   AddRecipe: undefined;
   CreateCake: undefined;
   Recipe: {
-    cake: string;   // selected cake type
-    layer1: string;   // selected flavour for layer 1
-    layer2: string;   // could be 'None'
-    layer3: string;   // could be 'None'
+    caketype: string;
+    caketype2?: string;
+    layers: string[];
+    outerLayer?: string;
+    layerCount: number;
+    selectedPortionSize: 'portions' | 'size';
+    portionSize: string;
+    selectedShape: 'circle' | 'square' | 'rectangle' | 'heart';
+    selectedAllergens: string[];
+    selectedDecorations: string[];
   };
- 
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
-
-  useEffect(() => {
-  supabase.from('recipe').select('*').then(console.log);
-}, []);
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
