@@ -38,6 +38,7 @@ export default function RecipeScreen({ route }: any) {
     outerLayer,
     selectedPortionSize,
     portionSize,
+    portionSize2,
     selectedShape,
   }: {
     caketype?: string;
@@ -46,6 +47,7 @@ export default function RecipeScreen({ route }: any) {
     outerLayer?: string;
     selectedPortionSize?: 'portions' | 'size';
     portionSize?: string;
+    portionSize2?: string;
     selectedShape?: 'circle' | 'square' | 'rectangle' | 'heart';
   } = route.params ?? {};
 
@@ -105,11 +107,24 @@ export default function RecipeScreen({ route }: any) {
         if (selectedPortionSize && portionSize && selectedShape) {
           if (selectedPortionSize === 'size') {
             // Size mode: compute the area directly from the user's input.
-            // Only circle is supported for now — other shapes need width + length inputs.
-            if (selectedShape === 'circle') {
-              const diameter = parseFloat(portionSize);
-              if (diameter > 0) {
-                userArea = calculateArea('circle', diameter);
+            const dimension1 = parseFloat(portionSize);
+            
+            if (dimension1 > 0) {
+              if (selectedShape === 'circle') {
+                // Circle: diameter
+                userArea = calculateArea('circle', dimension1);
+              } else if (selectedShape === 'square') {
+                // Square: side length (treated as diameter in calculateArea)
+                userArea = calculateArea('square', dimension1);
+              } else if (selectedShape === 'rectangle') {
+                // Rectangle: length and width
+                const dimension2 = parseFloat(portionSize2 || '0');
+                if (dimension2 > 0) {
+                  userArea = calculateArea('rectangle', undefined, dimension1, dimension2);
+                }
+              } else if (selectedShape === 'heart') {
+                // Heart: calculated exactly like circle (π × r²)
+                userArea = calculateArea('heart', dimension1);
               }
             }
           } else {
@@ -167,7 +182,7 @@ export default function RecipeScreen({ route }: any) {
     };
 
     load();
-  }, [caketype, caketype2, outerLayer, JSON.stringify(layers), selectedPortionSize, portionSize, selectedShape]);
+  }, [caketype, caketype2, outerLayer, JSON.stringify(layers), selectedPortionSize, portionSize, portionSize2, selectedShape]);
 
   const sections: Section[] = useMemo(() => {
     const result: Section[] = [];

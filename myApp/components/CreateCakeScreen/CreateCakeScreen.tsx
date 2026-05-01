@@ -19,7 +19,9 @@ export default function CreateCakeScreen({ navigation }: any) {
   const [layers, setLayers] = useState<string[]>(['', '', '', '', '', '']);
   const [layerTypes, setLayerTypes] = useState<string[]>(['', '', '', '', '', '']);
   const [portionSize, setPortionSize] = useState('');
+  const [portionSize2, setPortionSize2] = useState('');
   const [portionSizeError, setPortionSizeError] = useState<string | null>(null);
+  const [portionSize2Error, setPortionSize2Error] = useState<string | null>(null);
   const [allergensList, setAllergensList] = useState<string[]>([]);
   const [layerCountError, setLayerCountError] = useState<string | null>(null);
 
@@ -52,7 +54,8 @@ export default function CreateCakeScreen({ navigation }: any) {
     !!portionSize &&
     !portionSizeError &&
     !layerCountError &&
-    !!layerCount;
+    !!layerCount &&
+    (selectedShape !== 'rectangle' || (!!portionSize2 && !portionSize2Error));
 
   const toggleAllergen = (allergen: string) => {
     setSelectedAllergens((prev) =>
@@ -192,8 +195,59 @@ export default function CreateCakeScreen({ navigation }: any) {
               <Header />
               <Text style={styles.topText}>Here you can create</Text>
               <Text style={styles.topText}>your custom cake!</Text>
+              
+              
               <View style={styles.stepBox}>
-                <Text style={styles.stepsText}>Step 1: Portions or size</Text>
+                <Text style={styles.stepsText}>Step 1: Shape</Text>
+                <View style={styles.buttonsContainer}>
+                  <Pressable style={({pressed}) =>[
+                    styles.optionsButtons, 
+                    (pressed || selectedShape === 'circle') && styles.optionsButtonsHover]}
+                    onPress={() => {
+                      setSelectedShape('circle');
+                      setPortionSize2('');
+                      setPortionSize2Error(null);
+                    }}
+                  >
+                    <Text style={styles.optionsButtonsText}>Circle</Text>
+                  </Pressable>
+                  <Pressable 
+                  style={({pressed}) =>[
+                    styles.optionsButtons, 
+                    (pressed || selectedShape === 'square') && styles.optionsButtonsHover]} 
+                    onPress={() => {
+                      setSelectedShape('square');
+                      setPortionSize2('');
+                      setPortionSize2Error(null);
+                    }}
+                  >
+                    <Text style={styles.optionsButtonsText}>Square</Text>
+                  </Pressable>
+                </View>
+                <View style={styles.buttonsContainer}>
+                  <Pressable style={({pressed}) =>[
+                    styles.optionsButtons, 
+                    (pressed || selectedShape === 'rectangle') && styles.optionsButtonsHover]}
+                    onPress={() => setSelectedShape('rectangle')}
+                  >
+                    <Text style={styles.optionsButtonsText}>Rectangle</Text>
+                  </Pressable>
+                  <Pressable style={({pressed}) =>[
+                    styles.optionsButtons, 
+                    (pressed || selectedShape === 'heart') && styles.optionsButtonsHover]} 
+                    onPress={() => {
+                      setSelectedShape('heart');
+                      setPortionSize2('');
+                      setPortionSize2Error(null);
+                    }}
+                  >
+                    <Text style={styles.optionsButtonsText}>Heart</Text>
+                  </Pressable>
+                </View>
+              </View>
+
+              <View style={styles.stepBox}>
+                <Text style={styles.stepsText}>Step 2: Portions or size</Text>
                 <View style={styles.buttonsContainer}>
                   <Pressable
                     style={({ pressed }) => [
@@ -203,6 +257,8 @@ export default function CreateCakeScreen({ navigation }: any) {
                     onPress={() => {
                       setSelectedPortionSize('portions');
                       setPortionSizeError(null);
+                      setPortionSize2('');
+                      setPortionSize2Error(null);
                     }}
                   >
                     <Text style={styles.optionsButtonsText}>Portions</Text>
@@ -215,6 +271,8 @@ export default function CreateCakeScreen({ navigation }: any) {
                     onPress={() => {
                       setSelectedPortionSize('size');
                       setPortionSizeError(null);
+                      setPortionSize2('');
+                      setPortionSize2Error(null);
                     }}
                   >
                     <Text style={styles.optionsButtonsText}>Size (cm)</Text>
@@ -225,7 +283,7 @@ export default function CreateCakeScreen({ navigation }: any) {
                   <>
                     <TextInput
                       style={[styles.filedBox, styles.fildText]}
-                      placeholder={selectedPortionSize === 'portions' ? "e.g. 8, 12, 16" : "e.g. 20, 25, 30"}
+                      placeholder={selectedPortionSize === 'portions' ? "e.g. 8, 12, 16" : selectedShape === 'rectangle' ? "e.g. 20 (length)" : "e.g. 20, 25, 30"}
                       keyboardType="numeric"
                       value={portionSize}
                       onChangeText={(text) => {
@@ -248,46 +306,38 @@ export default function CreateCakeScreen({ navigation }: any) {
                         }
                       }}
                     />
+                    {selectedShape === 'rectangle' && selectedPortionSize === 'size' && (
+                      <TextInput
+                        style={[styles.filedBox, styles.fildText]}
+                        placeholder="e.g. 15 (width)"
+                        keyboardType="numeric"
+                        value={portionSize2}
+                        onChangeText={(text) => {
+                          // Remove non-digits
+                          const digits = text.replace(/[^0-9]/g, '');
+                          
+                          if (digits === '') {
+                            setPortionSize2('');
+                            setPortionSize2Error(null);
+                          } else {
+                            const num = parseInt(digits, 10);
+                            
+                            // Validate: must be integer > 0
+                            if (num > 0) {
+                              setPortionSize2(String(num));
+                              setPortionSize2Error(null);
+                            } else {
+                              setPortionSize2Error('Must be greater than 0');
+                            }
+                          }
+                        }}
+                      />
+                    )}
                   </>
                 )}
               </View>
-              
-              <View style={styles.stepBox}>
-                <Text style={styles.stepsText}>Step 2: Shape</Text>
-                <View style={styles.buttonsContainer}>
-                  <Pressable style={({pressed}) =>[
-                    styles.optionsButtons, 
-                    (pressed || selectedShape === 'circle') && styles.optionsButtonsHover]}
-                    onPress={() => setSelectedShape('circle')}
-                  >
-                    <Text style={styles.optionsButtonsText}>Circle</Text>
-                  </Pressable>
-                  <Pressable 
-                  style={({pressed}) =>[
-                    styles.optionsButtons, 
-                    (pressed || selectedShape === 'square') && styles.optionsButtonsHover]} 
-                    onPress={() => setSelectedShape('square')}
-                  >
-                    <Text style={styles.optionsButtonsText}>Square</Text>
-                  </Pressable>
-                </View>
-                <View style={styles.buttonsContainer}>
-                  <Pressable style={({pressed}) =>[
-                    styles.optionsButtons, 
-                    (pressed || selectedShape === 'rectangle') && styles.optionsButtonsHover]}
-                    onPress={() => setSelectedShape('rectangle')}
-                  >
-                    <Text style={styles.optionsButtonsText}>Rectangle</Text>
-                  </Pressable>
-                  <Pressable style={({pressed}) =>[
-                    styles.optionsButtons, 
-                    (pressed || selectedShape === 'heart') && styles.optionsButtonsHover]} 
-                    onPress={() => setSelectedShape('heart')}
-                  >
-                    <Text style={styles.optionsButtonsText}>Heart</Text>
-                  </Pressable>
-                </View>
-              </View>
+
+
               <View style={styles.stepBox}>
                 <Text style={styles.stepsText}>Step 3: Allergenes to avoid</Text>
                 {(() => {
@@ -544,6 +594,7 @@ export default function CreateCakeScreen({ navigation }: any) {
                   navigation.navigate("Recipe", {
                       selectedPortionSize: selectedPortionSize,
                       portionSize: portionSize,
+                      portionSize2: portionSize2,
                       selectedShape: selectedShape,
                       selectedAllergens: selectedAllergens,
                       layerCount: layerCountNumber,

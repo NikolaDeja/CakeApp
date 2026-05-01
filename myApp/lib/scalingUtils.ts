@@ -58,14 +58,10 @@ export function calculateArea(
     }
 
     case 'heart': {
-      // Approximate heart as 0.75 * bounding box (width × length)
-      // If only diameter given, treat as proxy for width/height
-      if (width_cm && length_cm) {
-        return 0.75 * width_cm * length_cm;
-      } else if (diameter_cm) {
-        return 0.75 * diameter_cm * diameter_cm;
-      }
-      return 0;
+      // Heart: calculated exactly like circle (π × r²)
+      if (!diameter_cm) return 0;
+      const radius = diameter_cm / 2;
+      return Math.PI * radius * radius;
     }
 
     default:
