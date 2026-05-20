@@ -367,8 +367,7 @@ export default function CreateCakeScreen({ navigation }: any) {
                   ));
                 })()}
 
-                  {/* Debug: see selected values */}
-                  <Text>Selected: {selectedAllergens.join(', ')}</Text>
+
               </View>
   
               
@@ -585,8 +584,7 @@ export default function CreateCakeScreen({ navigation }: any) {
                   ));
                 })()}
 
-                  {/* Debug: see selected values */}
-                  <Text>Selected: {selectedDecorations.join(', ')}</Text>
+                
               </View>
   
                   

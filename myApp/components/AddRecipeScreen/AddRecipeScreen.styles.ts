@@ -38,6 +38,15 @@ export const styles = StyleSheet.create({
         display: 'flex',
         justifyContent: 'center',
     },
+    pickerBox: {
+        marginTop: 20,
+        width: '100%',
+        borderWidth: 2,
+        borderColor: '#FF9ECD',
+        borderRadius: 15,
+        backgroundColor: '#FFF',
+        color: '#333',
+    },
 
      buttonsContainer:{
         display: 'flex',
@@ -156,7 +165,76 @@ export const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
         lineHeight: 24, 
-    }
+    },
+    filedBox: {
+        marginTop: 20,
+        width: '100%',
+        alignSelf: 'center',
+        borderWidth: 2,
+        borderColor: '#FF9ECD',
+        borderRadius: 15,
+        padding: 10,
+        display: 'flex',
+        justifyContent: 'center',
+    },
+    fildText: {
+        fontSize: 18,
+        color: '#717182',
+        fontFamily: 'Segoe UI',
+        fontStyle: 'normal',
+        fontWeight: 400,
+    },
+    
+    allergenRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 10,
+    },
+
+    allergenOption: {
+        backgroundColor: '#FFF',
+        borderColor: '#FF9ECD',
+        borderWidth: 1,
+        borderRadius: 15,
+        padding: 10,
+        alignSelf: 'center',
+        marginTop: 10, 
+        display: 'flex',
+        width: '48%',
+        gap: 10,
+    },
+
+    allergenContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        display: 'flex',
+        gap: 10,
+    },
+    allergenOptionText: {
+        color: '#333',
+        fontSize: 14,
+        fontFamily: 'Segoe UI',
+        textAlign: 'left',
+        fontWeight: '500',
+        flexShrink: 1,
+    },
+    tickBox: {
+        width: 20,
+        height: 20,
+        borderColor: '#FF9ECD',
+        borderWidth: 1,
+        borderRadius: 4,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FFF',
+    },
+    tickMark: {
+        fontSize: 14,
+        color: '#FF9ECD',
+        lineHeight: 16,
+        fontWeight: 'bold',
+    },
+
 });
 
 

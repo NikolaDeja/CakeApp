@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
 import Header from '../Header/Header';
 import Footer from '../Footer/Footer';
 import { supabase } from '../../lib/supabase';
@@ -54,6 +54,7 @@ export default function RecipeScreen({ route }: any) {
   const [recipesByName, setRecipesByName] = useState<Record<string, RecipeWithIngredients>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showTips, setShowTips] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -218,6 +219,35 @@ export default function RecipeScreen({ route }: any) {
     return result;
   }, [caketype, caketype2, layers, outerLayer, recipesByName]);
 
+  // Calculate shopping list by combining all ingredients
+  const shoppingList: IngredientRow[] = useMemo(() => {
+    const ingredientMap = new Map<string, { amount: number; unit: string }>();
+
+    // Collect all ingredients from all recipes
+    sections.forEach((section) => {
+      if (section.recipe && section.recipe.ingredients) {
+        section.recipe.ingredients.forEach((ing) => {
+          const key = `${ing.name}|${ing.unit}`;
+          if (ingredientMap.has(key)) {
+            const existing = ingredientMap.get(key)!;
+            existing.amount += ing.amount;
+          } else {
+            ingredientMap.set(key, { amount: ing.amount, unit: ing.unit });
+          }
+        });
+      }
+    });
+
+    // Convert to array and sort
+    return Array.from(ingredientMap.entries())
+      .map(([key, value]) => ({
+        name: key.split('|')[0],
+        amount: value.amount,
+        unit: value.unit,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [sections]);
+
   const Block = ({
     title,
     recipe,
@@ -226,32 +256,32 @@ export default function RecipeScreen({ route }: any) {
     recipe: RecipeWithIngredients | null;
   }) => (
     <View>
-      <Text style={styles.categoryText}>{title}</Text>
-
       {!recipe ? (
         <Text style={styles.noRecepieFoundText}>No recipe found.</Text>
       ) : (
-        <View>
+        <View style={styles.recipeContainer}>
+          <View style={styles.recepieNameContainer}>
           <Text style={styles.recepieNameText}>{recipe.name}</Text>
-          <Text style={styles.portionsAndTimeText}>
-            Time: {recipe.estimated_time ?? '—'} min
-          </Text>
-          <View style={styles.ingredientBox}>
+          </View>
+          <View style={styles.instructionsContainerRecipe}>
+          <View style={styles.ingredientContainerRecipe}>
             <Text style={styles.ingredientHeader}>Ingredients</Text>
             {recipe.ingredients.length ? (
               recipe.ingredients.map((ing, idx) => (
-                <Text style={styles.ingredientText} key={idx}>
-                  • {ing.name}: {ing.amount} {ing.unit}
+                <Text style={styles.ingredientsRecipe} key={idx}>
+                  <Text style={styles.ingredientName}>{ing.name}</Text>
+                  <Text style={styles.ingredientAmount}> {Math.ceil(ing.amount)} {ing.unit}</Text>
                 </Text>
               ))
             ) : (
-              <Text>No ingredients added.</Text>
+              <Text style={styles.ingredientName}>No ingredients added.</Text>
             )}
           </View>
-          <Text style={styles.instructiontHeader}>Instructions</Text>
+          <Text style={styles.ingredientHeader}>Instructions</Text>
           <Text style={styles.instructionText}>
             {recipe.instructions ?? 'No instructions.'}
           </Text>
+          </View>
         </View>
       )}
     </View>
@@ -267,13 +297,70 @@ export default function RecipeScreen({ route }: any) {
       <View style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ paddingBottom: 10 }}>
           <Header />
-
+        
+          <Text style={styles.title}>All Recipes</Text>
+          <Text style={styles.title2}>Combined shopping list and recipes</Text>
           {loading ? (
             <ActivityIndicator />
           ) : error ? (
             <Text>Error: {error}</Text>
           ) : (
             <View>
+              {shoppingList.length > 0 && (
+                <View style={styles.shoppingListContainer}>
+                  <View style={styles.shoppingListHeader}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" >
+                      <path d="M12.4967 9.16441L11.6636 16.6626" stroke="#FF9ECD" stroke-width="1.66626" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M15.8296 9.16442L12.4971 3.33252" stroke="#FF9ECD" stroke-width="1.66626" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M1.66602 9.16441H18.3286" stroke="#FF9ECD" stroke-width="1.66626" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M2.91602 9.16441L4.24902 15.3296C4.32692 15.7116 4.53632 16.0542 4.84078 16.2978C5.14524 16.5413 5.52547 16.6704 5.91528 16.6626H14.0799C14.4698 16.6704 14.85 16.5413 15.1544 16.2978C15.4589 16.0542 15.6683 15.7116 15.7462 15.3296L17.1625 9.16441" stroke="#FF9ECD" stroke-width="1.66626" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M3.74902 12.9135H16.246" stroke="#FF9ECD" stroke-width="1.66626" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M4.16553 9.16442L7.49804 3.33252" stroke="#FF9ECD" stroke-width="1.66626" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M7.49805 9.16441L8.33118 16.6626" stroke="#FF9ECD" stroke-width="1.66626" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <Text style={styles.shoppingListTitle}>Shopping List</Text>
+                  </View>
+                  <View style={styles.ingredientsList}>
+                    {shoppingList.map((ing, idx) => (
+                      <View style={styles.ingredients} key={idx}>
+                        <Text style={styles.ingredientName}>{ing.name}</Text>
+                        <Text style={styles.ingredientAmount}>
+                          {Math.ceil(ing.amount)} {ing.unit}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+              <TouchableOpacity 
+                style={styles.tipsHeader}
+                onPress={() => setShowTips(!showTips)}
+              >
+                <Text style={styles.tipsHeaderText}>
+                  {showTips ? '▼ ' : '▶ '}
+                </Text>
+                <Text style={styles.tipsHeaderText}>Instructions & Tips</Text>
+              </TouchableOpacity>
+              {showTips && (
+                <View style={styles.tipsContainer}>
+                  <Text style={styles.tipTitle}>How to Build Your Cake:</Text>
+                  <Text style={styles.tipText}>
+                    1. <Text style={styles.tipBold}>Cutting the Sponge Cake:</Text> Carefully cut your baked sponge cake into layers using a serrated knife or cake leveler. Make horizontal cuts to create even layers.
+                  </Text>
+                  <Text style={styles.tipText}>
+                    2. <Text style={styles.tipBold}>Applying Syrup:</Text> Brush each layer with syrup (simple syrup or flavored syrup) to keep the cake moist and prevent it from being dry. This adds flavor and moisture to your final creation.
+                  </Text>
+                  <Text style={styles.tipText}>
+                    3. <Text style={styles.tipBold}>What is a Piping Bag?</Text> A piping bag is a cone-shaped tool used to apply frosting, cream, or other fillings with precision. Fill it with your mixture and squeeze to create decorative patterns and controlled portions.
+                  </Text>
+                  <Text style={styles.tipText}>
+                    4. <Text style={styles.tipBold}>Assembly:</Text> Start with your cake base, add your chosen layers (cream, filling, ganache), and finish with your outer coating and decorations.
+                  </Text>
+                  <Text style={styles.tipText}>
+                    5. <Text style={styles.tipBold}>Refrigeration:</Text> Keep your cake refrigerated between assembly steps for best results and easier handling.
+                  </Text>
+                </View>
+              )}
               {sections.map((s, idx) => (
                 <Block key={`${s.title}-${idx}`} title={s.title} recipe={s.recipe} />
               ))}
