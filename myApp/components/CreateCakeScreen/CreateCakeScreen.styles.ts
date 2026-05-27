@@ -1,5 +1,14 @@
 import { StyleSheet } from 'react-native';
 
+const sharedShadow = {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
+};
+
 export const styles = StyleSheet.create({
     topText:{
         fontSize: 24,
@@ -13,11 +22,12 @@ export const styles = StyleSheet.create({
 
     },
     stepBox:{
+        position: 'relative',
         borderRadius: 20,
         backgroundColor: '#FFF',
         margin: 24,
         padding: 20,
-        boxShadow: '0px 1px 3px 0px rgba(0, 0, 0, 0.1)',
+        ...sharedShadow,
     },
     stepsText: {
         color: '#999',
@@ -27,6 +37,59 @@ export const styles = StyleSheet.create({
         fontStyle: 'normal',
         fontWeight: 400,
         lineHeight: 20, 
+    },
+    helpIconButton: {
+        position: 'absolute',
+        top: 16,
+        right: 16,
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        backgroundColor: '#FFC4E1',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10,
+        elevation: 3,
+    },
+    helpIconText: {
+        color: '#FFF',
+        fontWeight: 'bold',
+        fontSize: 16,
+        lineHeight: 18,
+    },
+    helpTooltipContainer: {
+        backgroundColor: '#fff',
+        borderRadius: 14,
+        padding: 14,
+        marginTop: 16,
+        width: '100%',
+    },
+    helpTooltipHeader: {
+        color: '#fff',
+        fontFamily: 'Segoe UI',
+        fontSize: 14,
+        fontWeight: '700',
+        backgroundColor: '#FF9ECD',
+        padding: 8,
+        borderTopLeftRadius: 15,
+        borderTopRightRadius: 15,
+        borderBottomLeftRadius: 0,
+        borderBottomRightRadius: 0,
+    },
+    helpTooltipText: {
+        color: '#000',
+        fontFamily: 'Segoe UI',
+        fontSize: 13,
+        lineHeight: 20,
+        borderColor: '#FF9ECD',
+        borderWidth: 2,
+        borderStyle: 'solid',
+        ...sharedShadow,
+        borderTopLeftRadius: 0,
+        borderTopRightRadius: 0,
+        borderBottomLeftRadius: 15,
+        borderBottomRightRadius: 15,
+        padding: 12,   
     },
 
     buttonsContainer:{
@@ -46,6 +109,7 @@ export const styles = StyleSheet.create({
     display: 'flex',
     justifyContent: 'center',
     width: '48%',
+    ...sharedShadow,
     },
 
     optionsButtonsHover: {
@@ -72,6 +136,7 @@ export const styles = StyleSheet.create({
         alignSelf: 'center',
         marginTop: 12,
         width: '100%',
+        ...sharedShadow,
     },
 
     filedBox: {
@@ -84,6 +149,7 @@ export const styles = StyleSheet.create({
         padding: 10,
         display: 'flex',
         justifyContent: 'center',
+        ...sharedShadow,
     },
     fildText: {
         fontSize: 18,
@@ -110,6 +176,7 @@ export const styles = StyleSheet.create({
         display: 'flex',
         width: '48%',
         gap: 10,
+        ...sharedShadow,
     },
 
     allergenContent: {
@@ -151,6 +218,7 @@ export const styles = StyleSheet.create({
         width: '60%',
         alignSelf: 'center',
         marginBottom: 20,
+        ...sharedShadow,
     },
     getRecipeButtonText: {
         color: '#FFF',

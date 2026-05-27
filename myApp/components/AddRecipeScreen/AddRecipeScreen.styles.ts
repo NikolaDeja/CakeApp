@@ -1,5 +1,12 @@
 import { StyleSheet } from 'react-native';
-
+const shadowStyle = {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
+};
 export const styles = StyleSheet.create({
     topText: {
         fontSize: 24,
@@ -106,6 +113,7 @@ export const styles = StyleSheet.create({
     marginRight: 10, 
     paddingHorizontal: 6,  
     paddingVertical: 3,
+    ...shadowStyle,
     },
 
     removeButtonText: {
@@ -128,6 +136,7 @@ export const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         gap: 13.996,
+        ...shadowStyle,
     },
     
     AddButtonText: {
@@ -154,6 +163,7 @@ export const styles = StyleSheet.create({
         width: '80%',
         alignSelf: 'center',
         marginBottom: 30,
+        ...shadowStyle,
     },
     saveButtonPressed: {
         backgroundColor: '#750c23ff',
@@ -176,6 +186,7 @@ export const styles = StyleSheet.create({
         padding: 10,
         display: 'flex',
         justifyContent: 'center',
+        ...shadowStyle,
     },
     fildText: {
         fontSize: 18,

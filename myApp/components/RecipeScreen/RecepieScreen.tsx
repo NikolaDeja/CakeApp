@@ -17,7 +17,6 @@ type RecipeWithIngredients = {
   id: number;
   name: string;
   instructions: string | null;
-  estimated_time: number | null;
   ingredients: IngredientRow[];
   recipe_size_ref: Array<{
     shape: string;
@@ -79,7 +78,7 @@ export default function RecipeScreen({ route }: any) {
         const { data, error } = await supabase
           .from('recipes')
           .select(
-            `id, name, instructions, estimated_time,
+            `id, name, instructions,
              recipe_ingredients(amount, unit, ingredients(name))`
           )
           .in('name', names);
@@ -168,7 +167,6 @@ export default function RecipeScreen({ route }: any) {
             id: row.id,
             name: row.name,
             instructions: row.instructions ?? null,
-            estimated_time: row.estimated_time ?? null,
             recipe_size_ref: sizeRefsByRecipeId[row.id] ? [sizeRefsByRecipeId[row.id]] : null,
             ingredients,
           };

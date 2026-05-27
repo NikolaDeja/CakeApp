@@ -1,5 +1,13 @@
 import { StyleSheet } from 'react-native';
 
+const shadowStyle = {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
+};
 
 export const styles = StyleSheet.create({
     welcomeSign: {
@@ -27,6 +35,7 @@ export const styles = StyleSheet.create({
         width: '80%',
         alignSelf: 'center',
         padding: 10,
+        ...shadowStyle,
     },
     createbuttonText: {
         color: 'white',
@@ -48,6 +57,7 @@ export const styles = StyleSheet.create({
         width: '80%',
         alignSelf: 'center',
         padding: 10,
+        ...shadowStyle,
     },
     addbuttonText: {
         color: '#FF9ECD',

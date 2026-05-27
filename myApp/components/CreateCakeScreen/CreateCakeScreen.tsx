@@ -24,7 +24,10 @@ export default function CreateCakeScreen({ navigation }: any) {
   const [portionSize2Error, setPortionSize2Error] = useState<string | null>(null);
   const [allergensList, setAllergensList] = useState<string[]>([]);
   const [layerCountError, setLayerCountError] = useState<string | null>(null);
-
+  const [showLayerCountHelp, setShowLayerCountHelp] = useState(false);
+  const [showCakeTypeHelp, setShowCakeTypeHelp] = useState(false);
+  const [showOuterLayerHelp, setShowOuterLayerHelp] = useState(false);
+  const [showFlavorHelp, setShowFlavorHelp] = useState(false);
 
 
   const [cakeTypeOptions, setCakeTypeOptions] = useState<SelectItem[]>([]);
@@ -372,7 +375,22 @@ export default function CreateCakeScreen({ navigation }: any) {
   
               
               <View style={styles.stepBox}>
+                <Pressable
+                  style={styles.helpIconButton}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  onPress={() => setShowLayerCountHelp((prev) => !prev)}
+                >
+                  <Text style={styles.helpIconText}>?</Text>
+                </Pressable>
                 <Text style={styles.stepsText}>Step 4: Number of layers</Text>
+                {showLayerCountHelp && (
+                  <View style={styles.helpTooltipContainer}>
+                    <Text style={styles.helpTooltipHeader}>Number of layers</Text>
+                    <Text style={styles.helpTooltipText}>
+                      This number means how many different flavours or layers will be stacked inside the cake. Each layer is one separate flavour or filling.
+                    </Text>
+                  </View>
+                )}
                 <TextInput
                     style={[styles.filedBox, styles.fildText]}
                     value={layerCount}
@@ -418,7 +436,22 @@ export default function CreateCakeScreen({ navigation }: any) {
               </View>
 
               <View style={styles.stepBox}>
+                <Pressable
+                  style={styles.helpIconButton}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  onPress={() => setShowCakeTypeHelp((prev) => !prev)}
+                >
+                  <Text style={styles.helpIconText}>?</Text>
+                </Pressable>
                 <Text style={styles.stepsText}>Step 5: Cake type</Text>
+                {showCakeTypeHelp && (
+                  <View style={styles.helpTooltipContainer}>
+                    <Text style={styles.helpTooltipHeader}>Cake flavour</Text>
+                    <Text style={styles.helpTooltipText}>
+                      Sponge cake is a light, airy base cake that can be cut and layered with fillings, creams, and toppings. It is the layer that carries the flavours and texture of the cake.
+                    </Text>
+                  </View>
+                )}
                 <SelectList
                     boxStyles={styles.filedBox}
                     inputStyles={styles.fildText}
@@ -461,7 +494,22 @@ export default function CreateCakeScreen({ navigation }: any) {
               </View>
 
               <View style={styles.stepBox}>
+                <Pressable
+                  style={styles.helpIconButton}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  onPress={() => setShowFlavorHelp((prev) => !prev)}
+                >
+                  <Text style={styles.helpIconText}>?</Text>
+                </Pressable>
                 <Text style={styles.stepsText}>Step 6: Flavours of layers</Text>
+                {showFlavorHelp && (
+                  <View style={styles.helpTooltipContainer}>
+                    <Text style={styles.helpTooltipHeader}>Layer types explained</Text>
+                    <Text style={styles.helpTooltipText}>
+                      Cream: soft and rich layer for a smooth texture. Filling: fruity or sweet centre that adds flavour. Ganash: chocolate-based layer for a decadent finish. Crunch: crispy layer to add texture and contrast.
+                    </Text>
+                  </View>
+                )}
                 {Array.from({ length: layerCountNumber || 1 }, (_, idx) => {
                   const ordinal = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth'][idx];
                   const layerTypeOptions = ['Cream', 'Filling', 'Ganash', 'Crunch'];
@@ -546,7 +594,22 @@ export default function CreateCakeScreen({ navigation }: any) {
                 })}
               </View>
               <View style={styles.stepBox}>
+                <Pressable
+                  style={styles.helpIconButton}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  onPress={() => setShowOuterLayerHelp((prev) => !prev)}
+                >
+                  <Text style={styles.helpIconText}>?</Text>
+                </Pressable>
                 <Text style={styles.stepsText}>Step 7: The outer layer</Text>
+                {showOuterLayerHelp && (
+                  <View style={styles.helpTooltipContainer}>
+                    <Text style={styles.helpTooltipHeader}>Outer layer</Text>
+                    <Text style={styles.helpTooltipText}>
+                      Fondant gives a smooth, polished finish for decoration. Buttercream is softer and creamier, adding rich flavour and texture to the outside.
+                    </Text>
+                  </View>
+                )}
                 <SelectList
                     setSelected={setOuterLayer}
                     placeholder="Select Flavour for Outer layer"
