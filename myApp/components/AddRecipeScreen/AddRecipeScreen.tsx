@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, Alert, Modal, TouchableOpacity } from 'react-native';
 import { supabase } from '../../lib/supabase';
+import { calculateArea } from '../../lib/scalingUtils';
 import { styles } from './AddRecipeScreen.styles';
 import Header from '../Header/Header';
 import Footer from '../Footer/Footer';
@@ -33,6 +34,8 @@ export default function AddRecipeScreen({ navigation }: any) {
   const [portionSizeError, setPortionSizeError] = useState<string | null>(null);
   const [portionSize2Error, setPortionSize2Error] = useState<string | null>(null);
   const [portions, setPortions] = useState('8');
+  const [numberOfLayersItCovers, setNumberOfLayersItCovers] = useState('');
+  const [numberOfLayersItCoversError, setNumberOfLayersItCoversError] = useState<string | null>(null);
   const [allergensList, setAllergensList] = useState<string[]>([]);
   const [selectedAllergens, setSelectedAllergens] = useState<string[]>([]);
   const [allIngredients, setAllIngredients] = useState<Array<{ id: number; name: string }>>([]);
@@ -116,9 +119,15 @@ export default function AddRecipeScreen({ navigation }: any) {
   const canSave = useMemo(() => {
     if (!recipeName.trim()) return false;
     if (!recipeTypeId) return false;
+    if (!selectedPortionSize) return false;
+    if (!selectedShape) return false;
 
-    const p = Number(portions);
-    if (!Number.isFinite(p) || p <= 0) return false;
+    const sizeValue = Number(String(portionSize).replace(',', '.'));
+    if (!Number.isFinite(sizeValue) || sizeValue <= 0) return false;
+    if (selectedPortionSize === 'size' && selectedShape === 'rectangle') {
+      const sizeValue2 = Number(String(portionSize2).replace(',', '.'));
+      if (!Number.isFinite(sizeValue2) || sizeValue2 <= 0) return false;
+    }
 
     const hasValidIngredient = ingredients.some((i) => {
       const name = i.name.trim();
@@ -128,7 +137,7 @@ export default function AddRecipeScreen({ navigation }: any) {
     });
 
     return hasValidIngredient;
-  }, [recipeName, recipeTypeId, portions, ingredients]);
+  }, [recipeName, recipeTypeId, selectedPortionSize, portionSize, portionSize2, selectedShape, ingredients]);
 
   const updateIngredient = (index: number, patch: Partial<IngredientInput>) => {
     setIngredients((prev) =>
@@ -183,27 +192,99 @@ export default function AddRecipeScreen({ navigation }: any) {
         return;
       }
 
+      const recipePayload: any = {
+        name: recipeName.trim(),
+        recipe_type_id: recipeTypeId,
+        instructions: instructions.trim() || null,
+      };
+
+      if (numberOfLayersItCovers) {
+        const layers = Number(String(numberOfLayersItCovers).replace(',', '.'));
+        if (Number.isFinite(layers) && layers > 0) {
+          recipePayload.default_layers_count = layers;
+        }
+      }
+
       const { data: recipeRow, error: recipeError } = await supabase
         .from('recipes')
-        .insert([
-          {
-            name: recipeName.trim(),
-            recipe_type_id: recipeTypeId,
-            instructions: instructions.trim() || null,
-          },
-        ])
+        .insert([recipePayload])
         .select('id')
         .single();
 
       if (recipeError) throw recipeError;
 
       const newRecipeId = recipeRow.id as number;
+      const dbShape = selectedShape;
+
+      // Save recipe size reference
+      let sizeRefPayload: any = {
+        recipe_id: newRecipeId,
+        shape: dbShape,
+      };
+
+      if (selectedPortionSize === 'size') {
+        const dimension1 = Number(String(portionSize).replace(',', '.'));
+        let dimension2 = null;
+        let areaCm2 = 0;
+
+        if (selectedShape === 'rectangle') {
+          dimension2 = Number(String(portionSize2).replace(',', '.'));
+          if (!Number.isFinite(dimension2) || dimension2 <= 0) {
+            throw new Error('Width for rectangle size is required.');
+          }
+          areaCm2 = calculateArea(selectedShape, undefined, dimension1, dimension2);
+          sizeRefPayload.length_cm = dimension1;
+          sizeRefPayload.width_cm = dimension2;
+        } else if (selectedShape === 'square') {
+          areaCm2 = calculateArea(selectedShape, dimension1);
+          sizeRefPayload.width_cm = dimension1;
+          sizeRefPayload.length_cm = dimension1;
+        } else {
+          areaCm2 = calculateArea(selectedShape, dimension1);
+          sizeRefPayload.diameter_cm = dimension1;
+        }
+
+        sizeRefPayload.area_cm2 = Math.round(areaCm2);
+      } else {
+        const portionsCount = Number(String(portionSize).replace(',', '.'));
+        if (!Number.isFinite(portionsCount) || portionsCount <= 0) {
+          throw new Error('Portion count must be a positive number.');
+        }
+
+        const { data: guideRow, error: guideError } = await supabase
+          .from('size_portion_guides')
+          .select('diameter_cm, width_cm, length_cm, area_cm2')
+          .eq('shape', dbShape)
+          .eq('portions', portionsCount)
+          .maybeSingle();
+
+        if (guideError) throw guideError;
+        if (!guideRow) {
+          throw new Error('No matching size guide found for the selected shape and portions.');
+        }
+
+        sizeRefPayload = {
+          ...sizeRefPayload,
+          diameter_cm: guideRow.diameter_cm ?? null,
+          width_cm: guideRow.width_cm ?? null,
+          length_cm: guideRow.length_cm ?? null,
+          area_cm2: guideRow.area_cm2 ?? null,
+        };
+      }
+
+      const { error: sizeRefError } = await supabase.from('recipe_size_refs').insert([
+        sizeRefPayload,
+      ]);
+
+      if (sizeRefError) {
+        console.error('sizeRefError', sizeRefError, { sizeRefPayload, selectedShape, dbShape });
+        throw sizeRefError;
+      }
 
       // 2) Insert ingredients and join rows
       for (const ing of validIngredients) {
         const cleanName = ing.name;
 
-        // find ingredient by name
         const { data: existing, error: findErr } = await supabase
           .from('ingredients')
           .select('id')
@@ -214,7 +295,6 @@ export default function AddRecipeScreen({ navigation }: any) {
 
         let ingredientId: number | undefined = existing?.id;
 
-        // create ingredient if missing
         if (!ingredientId) {
           const { data: created, error: createErr } = await supabase
             .from('ingredients')
@@ -226,7 +306,6 @@ export default function AddRecipeScreen({ navigation }: any) {
           ingredientId = created.id as number;
         }
 
-        // insert join row
         const { error: joinErr } = await supabase.from('recipe_ingredients').insert([
           {
             recipe_id: newRecipeId,
@@ -342,7 +421,7 @@ export default function AddRecipeScreen({ navigation }: any) {
         </View>
         
         <View style={styles.stepBox}>
-          <Text style={styles.stepsText}>Step 2: Portions or size</Text>
+          <Text style={styles.stepsText}>Portions or size</Text>
           <View style={styles.buttonsContainer}>
             <Pressable
               style={({ pressed }) => [
@@ -430,6 +509,35 @@ export default function AddRecipeScreen({ navigation }: any) {
               )}
             </>
           )}
+        </View>
+
+        <View style={styles.stepBox}>
+          <Text style={styles.stepsText}>Number of layers this recipe covers</Text>
+          <TextInput
+            style={[styles.filedBox, styles.fildText]}
+            placeholder="e.g. 1, 2, 3"
+            keyboardType="numeric"
+            value={numberOfLayersItCovers}
+            onChangeText={(text) => {
+              // Remove non-digits
+              const digits = text.replace(/[^0-9]/g, '');
+              
+              if (digits === '') {
+                setNumberOfLayersItCovers('');
+                setNumberOfLayersItCoversError(null);
+              } else {
+                const num = parseInt(digits, 10);
+                
+                // Validate: must be integer > 0
+                if (num > 0) {
+                  setNumberOfLayersItCovers(String(num));
+                  setNumberOfLayersItCoversError(null);
+                } else {
+                  setNumberOfLayersItCoversError('Must be greater than 0');
+                }
+              }
+            }}
+          />
         </View>
 
         <View style={styles.stepBox}>
