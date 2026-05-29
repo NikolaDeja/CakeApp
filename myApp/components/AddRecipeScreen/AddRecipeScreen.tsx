@@ -13,6 +13,7 @@ type IngredientInput = {
   amount: string;
   unit: string;
   isCustom?: boolean;
+  selectedAllergens?: string[];
 };
 
 type RecipeType = {
@@ -151,7 +152,7 @@ export default function AddRecipeScreen({ navigation }: any) {
   };
 
   const handleIngredientNotOnList = (idx: number) => {
-    updateIngredient(idx, { isCustom: true, name: '' });
+    updateIngredient(idx, { isCustom: true, name: '', selectedAllergens: [] });
   };
 
   const addNewIngredient = (idx: number) => {
@@ -190,6 +191,7 @@ export default function AddRecipeScreen({ navigation }: any) {
 
       const validIngredients = ingredients
         .map((i) => ({
+          originalIngredient: i,
           name: i.name.trim(),
           amount: Number(String(i.amount).replace(',', '.')),
           unit: i.unit.trim(),
@@ -316,6 +318,32 @@ export default function AddRecipeScreen({ navigation }: any) {
 
           if (createErr) throw createErr;
           ingredientId = created.id as number;
+
+          // If this is a custom ingredient with allergens, add them to ingredient_allergens table
+          const ingredientAllergens = ing.originalIngredient.selectedAllergens ?? [];
+          if (ingredientAllergens.length > 0) {
+            // Get allergen IDs from names
+            const { data: allergenData, error: allergenFetchErr } = await supabase
+              .from('allergens')
+              .select('id, name')
+              .in('name', ingredientAllergens);
+
+            if (allergenFetchErr) throw allergenFetchErr;
+
+            // Create ingredient_allergen associations
+            const allergenAssociations = (allergenData ?? []).map((allergen: any) => ({
+              ingredient_id: ingredientId,
+              allergen_id: allergen.id,
+            }));
+
+            if (allergenAssociations.length > 0) {
+              const { error: allergenLinkErr } = await supabase
+                .from('ingredient_allergens')
+                .insert(allergenAssociations);
+
+              if (allergenLinkErr) throw allergenLinkErr;
+            }
+          }
         }
 
         const { error: joinErr } = await supabase.from('recipe_ingredients').insert([
@@ -339,12 +367,14 @@ export default function AddRecipeScreen({ navigation }: any) {
     }
   };
 
-  const toggleAllergen = (allergen: string) => {
-    setSelectedAllergens((prev) =>
-      prev.includes(allergen)
-        ? prev.filter((item) => item !== allergen)
-        : [...prev, allergen]
-    );
+  const toggleIngredientAllergen = (idx: number, allergen: string) => {
+    updateIngredient(idx, {
+      selectedAllergens: (
+        ingredients[idx].selectedAllergens ?? []
+      ).includes(allergen)
+        ? (ingredients[idx].selectedAllergens ?? []).filter((a) => a !== allergen)
+        : [...(ingredients[idx].selectedAllergens ?? []), allergen],
+    });
   };
 
   return (
@@ -592,7 +622,33 @@ export default function AddRecipeScreen({ navigation }: any) {
                     placeholder="Type new ingredient name"
                     style={styles.fildBox}
                   />
-                  <Pressable style={[styles.AddButton, { marginTop: 10 }]} onPress={() => updateIngredient(idx, { isCustom: false, name: '' })}>
+                  <Text style={[styles.stepsText, { marginTop: 15, marginBottom: 10 }]}>Allergens in this ingredient</Text>
+                  <View style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                    {allergensList.map((allergen) => (
+                      <Pressable
+                        key={allergen}
+                        style={styles.allergenOption}
+                        onPress={() => toggleIngredientAllergen(idx, allergen)}
+                      >
+                        <View style={styles.allergenContent}>
+                          <View
+                            style={[
+                              styles.tickBox,
+                              (ing.selectedAllergens ?? []).includes(allergen) && {
+                                backgroundColor: '#FF9ECD',
+                              },
+                            ]}
+                          >
+                            {(ing.selectedAllergens ?? []).includes(allergen) && (
+                              <Text style={styles.tickMark}>✓</Text>
+                            )}
+                          </View>
+                          <Text style={styles.allergenOptionText}>{allergen}</Text>
+                        </View>
+                      </Pressable>
+                    ))}
+                  </View>
+                  <Pressable style={[styles.AddButton, { marginTop: 10 }]} onPress={() => updateIngredient(idx, { isCustom: false, name: '', selectedAllergens: [] })}>
                     <Text style={styles.AddButtonText}>Choose from list instead</Text>
                   </Pressable>
                 </>
