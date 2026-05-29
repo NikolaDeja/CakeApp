@@ -12,6 +12,7 @@ type IngredientInput = {
   name: string;
   amount: string;
   unit: string;
+  isCustom?: boolean;
 };
 
 type RecipeType = {
@@ -149,6 +150,10 @@ export default function AddRecipeScreen({ navigation }: any) {
     setIngredients((prev) => [...prev, { name: '', amount: '', unit: 'g' }]);
   };
 
+  const handleIngredientNotOnList = (idx: number) => {
+    updateIngredient(idx, { isCustom: true, name: '' });
+  };
+
   const addNewIngredient = (idx: number) => {
     const ingredientName = ingredients[idx].name.trim();
     
@@ -157,7 +162,6 @@ export default function AddRecipeScreen({ navigation }: any) {
       return;
     }
 
-    // Check if ingredient already exists in the list
     const exists = allIngredients.some((ing) => ing.name.toLowerCase() === ingredientName.toLowerCase());
     
     if (exists) {
@@ -165,7 +169,6 @@ export default function AddRecipeScreen({ navigation }: any) {
       return;
     }
 
-    // Ingredient will be created during save
     Alert.alert('Success', `"${ingredientName}" will be added as a new ingredient.`);
   };
 
@@ -179,6 +182,12 @@ export default function AddRecipeScreen({ navigation }: any) {
     setSaving(true);
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        Alert.alert('Not signed in', 'Please sign in again to save your recipe.');
+        return;
+      }
+
       const validIngredients = ingredients
         .map((i) => ({
           name: i.name.trim(),
@@ -196,6 +205,7 @@ export default function AddRecipeScreen({ navigation }: any) {
         name: recipeName.trim(),
         recipe_type_id: recipeTypeId,
         instructions: instructions.trim() || null,
+        user_id: user.id,
       };
 
       if (numberOfLayersItCovers) {
@@ -239,9 +249,11 @@ export default function AddRecipeScreen({ navigation }: any) {
           areaCm2 = calculateArea(selectedShape, dimension1);
           sizeRefPayload.width_cm = dimension1;
           sizeRefPayload.length_cm = dimension1;
-        } else {
+        } else if (selectedShape === 'circle' || selectedShape === 'heart') {
           areaCm2 = calculateArea(selectedShape, dimension1);
           sizeRefPayload.diameter_cm = dimension1;
+        } else {
+          throw new Error('Invalid shape selected for size calculation.');
         }
 
         sizeRefPayload.area_cm2 = Math.round(areaCm2);
@@ -539,36 +551,6 @@ export default function AddRecipeScreen({ navigation }: any) {
             }}
           />
         </View>
-
-        <View style={styles.stepBox}>
-          <Text style={styles.stepsText}>Allergenes in the recipe</Text>
-          {(() => {
-            const allergenPairs = [];
-            for (let i = 0; i < allergensList.length; i += 2) {
-              allergenPairs.push(allergensList.slice(i, i + 2));
-            }
-            return allergenPairs.map((pair, index) => (
-              <View key={index} style={styles.allergenRow}>
-                {pair.map((allergen) => {
-                  const isSelected = selectedAllergens.includes(allergen);
-                  return (
-                    <Pressable style={styles.allergenOption}
-                      key={allergen}
-                      onPress={() => toggleAllergen(allergen)}
-                    >
-                      <View style={styles.allergenContent}>
-                        <View style={styles.tickBox}>
-                          {isSelected && <Text style={styles.tickMark}>✓</Text>}
-                        </View>
-                        <Text style={styles.allergenOptionText}>{allergen}</Text>
-                      </View>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            ));
-          })()}
-        </View>
           
 
         <View style={styles.stepBox}> 
@@ -591,71 +573,74 @@ export default function AddRecipeScreen({ navigation }: any) {
         </View>
 
         <View style={styles.stepBox}>
-        <Text style={styles.stepsText}>Ingredients</Text>
-        {ingredients.map((ing, idx) => (
-          <View key={idx} style={{ marginBottom: 20 }}>
-            <View style={styles.ingredientHeader}>
-              <Text style={styles.ingedientText}>Ingredient {idx + 1}</Text>
-              {ingredients.length > 1 ? (
-                <Pressable style={styles.removeButton} onPress={() => removeIngredientRow(idx)}>
-                  <Text style={styles.removeButtonText}>X</Text>
-                </Pressable>
-              ) : null}
+          <Text style={styles.stepsText}>Ingredients</Text>
+          {ingredients.map((ing, idx) => (
+            <View key={idx} style={{ marginBottom: 20 }}>
+              <View style={styles.ingredientHeader}>
+                <Text style={styles.ingedientText}>Ingredient {idx + 1}</Text>
+                {ingredients.length > 1 ? (
+                  <Pressable style={styles.removeButton} onPress={() => removeIngredientRow(idx)}>
+                    <Text style={styles.removeButtonText}>X</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+              {ing.isCustom ? (
+                <>
+                  <TextInput
+                    value={ing.name}
+                    onChangeText={(t) => updateIngredient(idx, { name: t })}
+                    placeholder="Type new ingredient name"
+                    style={styles.fildBox}
+                  />
+                  <Pressable style={[styles.AddButton, { marginTop: 10 }]} onPress={() => updateIngredient(idx, { isCustom: false, name: '' })}>
+                    <Text style={styles.AddButtonText}>Choose from list instead</Text>
+                  </Pressable>
+                </>
+              ) : (
+                <>
+                  <SelectList
+                    data={allIngredients.map((ing) => ({
+                      key: ing.name,
+                      value: ing.name,
+                    }))}
+                    setSelected={(value: string) => updateIngredient(idx, { name: value, isCustom: false })}
+                    placeholder="Select ingredient..."
+                    boxStyles={styles.filedBox}
+                    inputStyles={styles.fildText}
+                    searchPlaceholder="Search ingredient..."
+                  />
+                  <Pressable style={styles.AddButton} onPress={() => handleIngredientNotOnList(idx)}>
+                    <Text style={styles.AddButtonText}>Ingredient not on the list</Text>
+                  </Pressable>
+                </>
+              )}
+              <TextInput
+                value={ing.amount}
+                onChangeText={(t) => updateIngredient(idx, { amount: t })}
+                placeholder="Amount"
+                keyboardType="decimal-pad"
+                style={styles.fildBox}
+              />
+              <TextInput
+                value={ing.unit}
+                onChangeText={(t) => updateIngredient(idx, { unit: t })}
+                placeholder="Unit (g, ml, piece, etc)"
+                style={styles.fildBox}
+              />
             </View>
-            <SelectList
-              data={allIngredients.map((ing) => ({
-                key: ing.name,
-                value: ing.name,
-              }))}
-              setSelected={(value: string) => updateIngredient(idx, { name: value })}
-              placeholder="Select ingredient..."
-              boxStyles={styles.filedBox}
-              inputStyles={styles.fildText}
-              searchPlaceholder="Search ingredient..."
-            />
-
-            <TouchableOpacity
-                onPress={() => {
-                    alert('Make sure there is not already an ingredient with the same name. If there is, just select it from the dropdown.');
-                addNewIngredient(idx)
-                }}>
-                <View pointerEvents="none" style={styles.AddButton}>
-                    <TextInput
-                        onChange={() => {}}
-                        value={ing.name}
-                onChangeText={(t) => updateIngredient(idx, { name: t })}
-                placeholder="New ingredient"
-                style={styles.AddButtonText} 
-                    />
-                </View>
-            </TouchableOpacity>
-            <TextInput
-              value={ing.amount}
-              onChangeText={(t) => updateIngredient(idx, { amount: t })}
-              placeholder="Amount"
-              keyboardType="decimal-pad"
-              style={styles.fildBox}
-            />
-            <TextInput
-              value={ing.unit}
-              onChangeText={(t) => updateIngredient(idx, { unit: t })}
-              placeholder="Unit (g, ml, piece, etc)"
-              style={styles.fildBox}
-            />
-          </View>
-        ))}
+          ))}
+        </View>
         <View>
           <Pressable style={styles.AddButton} onPress={addIngredientRow}>
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" style={styles.addIcon}>
             <path d="M3.33252 7.99805H12.6636" stroke="white" stroke-width="1.33301" stroke-linecap="round" stroke-linejoin="round"/>
             <path d="M7.99805 3.33252V12.6636" stroke="white" stroke-width="1.33301" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-            <Text style={styles.AddButtonText}>Add ingredient row</Text>
+            <Text style={styles.AddButtonText}>Add ingredient</Text>
           </Pressable>
         </View>
-        </View>
 
-        <Pressable  style={({ pressed }) => [styles.saveButton, pressed && styles.saveButtonPressed,]} 
+        <Pressable  style={({ pressed }) => [styles.saveButton, pressed && styles.saveButtonPressed]} 
         disabled={!canSave || saving} onPress={saveRecipe}>
           <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Save recipe'}</Text>
         </Pressable>

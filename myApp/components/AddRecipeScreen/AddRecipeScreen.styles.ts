@@ -32,7 +32,6 @@ export const styles = StyleSheet.create({
         fontStyle: 'normal',
         fontWeight: 400,
         lineHeight: 20, 
-        marginLeft: 10,
     },
     fildBox: {
         marginTop: 20,
@@ -89,10 +88,9 @@ export const styles = StyleSheet.create({
 
 
     ingedientText:{
-        fontSize: 12,
+        fontSize: 16,
         fontWeight: 'bold',
         marginTop: 10,
-        marginLeft: 10,
     },
 
     ingredientHeader: {
@@ -124,8 +122,7 @@ export const styles = StyleSheet.create({
     },
 
     AddButton: {
-        marginTop: 10,
-        marginBottom: 10,
+        marginTop: 15,
         backgroundColor: '#FFC4E1',
         padding: 5,
         borderRadius: 15,
@@ -135,7 +132,6 @@ export const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        gap: 13.996,
         ...shadowStyle,
     },
     

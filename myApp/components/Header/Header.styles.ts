@@ -34,5 +34,22 @@ export const styles = StyleSheet.create({
     width: 36,
     height: 36,
     },
+
+    signOutButton: {
+    borderWidth: 2,
+    borderColor: '#FF9ECD',
+    borderRadius: 15,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    marginRight: 20,
+    backgroundColor: '#FFF',
+    },
+
+    signOutText: {
+    color: '#FF9ECD',
+    fontFamily: 'Segoe UI',
+    fontSize: 14,
+    fontWeight: 'bold',
+    },
 });
 

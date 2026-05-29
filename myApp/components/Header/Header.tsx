@@ -3,6 +3,7 @@ import { View, Text, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { styles } from './Header.styles';
 import { SafeAreaView } from "react-native-safe-area-context";
+import { supabase } from '../../lib/supabase';
 
 
 export default function Header() {
@@ -26,7 +27,10 @@ export default function Header() {
                     </View>
             </Pressable>
             <Text style={styles.headerText} onPress={() => navigation.navigate("Home")}>Cake App</Text>
-            <View style={{width: 24}} />
+            <View style={{ flex: 1 }} />
+            <Pressable style={styles.signOutButton} onPress={() => supabase.auth.signOut()}>
+                <Text style={styles.signOutText}>Sign out</Text>
+            </Pressable>
         </View>
        </SafeAreaView>
     );

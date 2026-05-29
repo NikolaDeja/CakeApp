@@ -110,11 +110,14 @@ export default function CreateCakeScreen({ navigation }: any) {
       setLoading(true);
       setError(null);
       try {
-        // Fetch all recipes with their types, ingredients, and allergens
-        const recipesRes = await supabase
+        const { data: { user } } = await supabase.auth.getUser();
+        const userId = user?.id;
+
+        // Show creator recipes (user_id is null) plus the logged-in user's own recipes.
+        let recipesQuery = supabase
           .from('recipes')
           .select(`
-            id, name, recipe_types!fk_recipes_recipe_type(code),
+            id, name, user_id, recipe_types!fk_recipes_recipe_type(code),
             recipe_ingredients(
               ingredient_id,
               ingredients(
@@ -124,8 +127,13 @@ export default function CreateCakeScreen({ navigation }: any) {
                 )
               )
             )
-          `)
-          .order('name', { ascending: true });
+          `);
+
+        recipesQuery = userId
+          ? recipesQuery.or(`user_id.is.null,user_id.eq.${userId}`)
+          : recipesQuery.is('user_id', null);
+
+        const recipesRes = await recipesQuery.order('name', { ascending: true });
 
         if (recipesRes.error) throw recipesRes.error;
 
