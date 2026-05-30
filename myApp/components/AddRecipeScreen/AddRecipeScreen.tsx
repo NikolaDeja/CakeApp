@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, Alert, Modal, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, Alert, Modal, TouchableOpacity, Platform } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { calculateArea } from '../../lib/scalingUtils';
 import { styles } from './AddRecipeScreen.styles';
@@ -7,6 +7,7 @@ import Header from '../Header/Header';
 import Footer from '../Footer/Footer';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SelectList } from 'react-native-dropdown-select-list';
+import Svg, { Path } from 'react-native-svg';
 
 type IngredientInput = {
   name: string;
@@ -29,7 +30,7 @@ export default function AddRecipeScreen({ navigation }: any) {
   const [recipeTypeId, setRecipeTypeId] = useState<number | null>(null);
   const [recipeTypes, setRecipeTypes] = useState<RecipeType[]>([]);
   const [loadingTypes, setLoadingTypes] = useState(false);
-  const [selectedPortionSize, setSelectedPortionSize] = useState<'portions' | 'size' | ''>('');
+  const [selectedPortionVsSize, setSelectedPortionVsSize] = useState<'portions' | 'size' | ''>('');
   const [selectedShape, setSelectedShape] = useState<'circle' | 'square' | 'rectangle' | 'heart' | ''>('');
   const [portionSize, setPortionSize] = useState('');
   const [portionSize2, setPortionSize2] = useState('');
@@ -121,12 +122,12 @@ export default function AddRecipeScreen({ navigation }: any) {
   const canSave = useMemo(() => {
     if (!recipeName.trim()) return false;
     if (!recipeTypeId) return false;
-    if (!selectedPortionSize) return false;
+    if (!selectedPortionVsSize) return false;
     if (!selectedShape) return false;
 
     const sizeValue = Number(String(portionSize).replace(',', '.'));
     if (!Number.isFinite(sizeValue) || sizeValue <= 0) return false;
-    if (selectedPortionSize === 'size' && selectedShape === 'rectangle') {
+    if (selectedPortionVsSize === 'size' && selectedShape === 'rectangle') {
       const sizeValue2 = Number(String(portionSize2).replace(',', '.'));
       if (!Number.isFinite(sizeValue2) || sizeValue2 <= 0) return false;
     }
@@ -139,7 +140,7 @@ export default function AddRecipeScreen({ navigation }: any) {
     });
 
     return hasValidIngredient;
-  }, [recipeName, recipeTypeId, selectedPortionSize, portionSize, portionSize2, selectedShape, ingredients]);
+  }, [recipeName, recipeTypeId, selectedPortionVsSize, portionSize, portionSize2, selectedShape, ingredients]);
 
   const updateIngredient = (index: number, patch: Partial<IngredientInput>) => {
     setIngredients((prev) =>
@@ -152,6 +153,14 @@ export default function AddRecipeScreen({ navigation }: any) {
   };
 
   const handleIngredientNotOnList = (idx: number) => {
+    const message =
+      "Make sure there isn't already an ingredient with the same name. If there is, select it from the dropdown instead. Names are matched ignoring upper/lower case.";
+    if (Platform.OS === 'web') {
+      // React-Native-Web's Alert.alert only shows the title, so use the browser dialog directly.
+      window.alert(message);
+    } else {
+      Alert.alert('Heads up', message);
+    }
     updateIngredient(idx, { isCustom: true, name: '', selectedAllergens: [] });
   };
 
@@ -189,6 +198,19 @@ export default function AddRecipeScreen({ navigation }: any) {
         return;
       }
 
+      const recipePayload: any = {
+        name: recipeName.trim(),
+        recipe_type_id: recipeTypeId,
+        instructions: instructions.trim() || null,
+        user_id: user.id,
+      };
+
+      const { data: recipeRow, error: recipeError } = await supabase
+        .from('recipes')
+        .insert([recipePayload])
+        .select('id')
+        .single();
+
       const validIngredients = ingredients
         .map((i) => ({
           originalIngredient: i,
@@ -198,17 +220,11 @@ export default function AddRecipeScreen({ navigation }: any) {
         }))
         .filter((i) => i.name && Number.isFinite(i.amount) && i.amount > 0 && i.unit);
 
+
       if (validIngredients.length === 0) {
         Alert.alert('Missing ingredients', 'Add at least one valid ingredient.');
         return;
       }
-
-      const recipePayload: any = {
-        name: recipeName.trim(),
-        recipe_type_id: recipeTypeId,
-        instructions: instructions.trim() || null,
-        user_id: user.id,
-      };
 
       if (numberOfLayersItCovers) {
         const layers = Number(String(numberOfLayersItCovers).replace(',', '.'));
@@ -217,11 +233,6 @@ export default function AddRecipeScreen({ navigation }: any) {
         }
       }
 
-      const { data: recipeRow, error: recipeError } = await supabase
-        .from('recipes')
-        .insert([recipePayload])
-        .select('id')
-        .single();
 
       if (recipeError) throw recipeError;
 
@@ -234,7 +245,7 @@ export default function AddRecipeScreen({ navigation }: any) {
         shape: dbShape,
       };
 
-      if (selectedPortionSize === 'size') {
+      if (selectedPortionVsSize === 'size') {
         const dimension1 = Number(String(portionSize).replace(',', '.'));
         let dimension2 = null;
         let areaCm2 = 0;
@@ -298,16 +309,10 @@ export default function AddRecipeScreen({ navigation }: any) {
       // 2) Insert ingredients and join rows
       for (const ing of validIngredients) {
         const cleanName = ing.name;
-
-        const { data: existing, error: findErr } = await supabase
-          .from('ingredients')
-          .select('id')
-          .eq('name', cleanName)
-          .maybeSingle();
-
-        if (findErr) throw findErr;
-
-        let ingredientId: number | undefined = existing?.id;
+        const existingMatch = allIngredients.find(
+          (i) => i.name.toLowerCase() === cleanName.toLowerCase()
+        );
+        let ingredientId: number | undefined = existingMatch?.id;
 
         if (!ingredientId) {
           const { data: created, error: createErr } = await supabase
@@ -319,7 +324,6 @@ export default function AddRecipeScreen({ navigation }: any) {
           if (createErr) throw createErr;
           ingredientId = created.id as number;
 
-          // If this is a custom ingredient with allergens, add them to ingredient_allergens table
           const ingredientAllergens = ing.originalIngredient.selectedAllergens ?? [];
           if (ingredientAllergens.length > 0) {
             // Get allergen IDs from names
@@ -354,7 +358,6 @@ export default function AddRecipeScreen({ navigation }: any) {
             unit: ing.unit,
           },
         ]);
-
         if (joinErr) throw joinErr;
       }
 
@@ -468,10 +471,10 @@ export default function AddRecipeScreen({ navigation }: any) {
             <Pressable
               style={({ pressed }) => [
                 styles.optionsButtons,
-                (pressed || selectedPortionSize === 'portions') && styles.optionsButtonsHover,
+                (pressed || selectedPortionVsSize === 'portions') && styles.optionsButtonsHover,
               ]}
               onPress={() => {
-                setSelectedPortionSize('portions');
+                setSelectedPortionVsSize('portions');
                 setPortionSizeError(null);
                 setPortionSize2('');
                 setPortionSize2Error(null);
@@ -482,10 +485,10 @@ export default function AddRecipeScreen({ navigation }: any) {
             <Pressable
               style={({ pressed }) => [
                 styles.optionsButtons,
-                (pressed || selectedPortionSize === 'size') && styles.optionsButtonsHover,
+                (pressed || selectedPortionVsSize === 'size') && styles.optionsButtonsHover,
               ]}
               onPress={() => {
-                setSelectedPortionSize('size');
+                setSelectedPortionVsSize('size');
                 setPortionSizeError(null);
                 setPortionSize2('');
                 setPortionSize2Error(null);
@@ -495,11 +498,11 @@ export default function AddRecipeScreen({ navigation }: any) {
             </Pressable>
           </View>
         
-          {selectedPortionSize && (
+          {selectedPortionVsSize && (
             <>
               <TextInput
                 style={[styles.filedBox, styles.fildText]}
-                placeholder={selectedPortionSize === 'portions' ? "e.g. 8, 12, 16" : selectedShape === 'rectangle' ? "e.g. 20 (length)" : "e.g. 20, 25, 30"}
+                placeholder={selectedPortionVsSize === 'portions' ? "e.g. 8, 12, 16" : selectedShape === 'rectangle' ? "e.g. 20 (length)" : "e.g. 20, 25, 30"}
                 keyboardType="numeric"
                 value={portionSize}
                 onChangeText={(text) => {
@@ -522,7 +525,7 @@ export default function AddRecipeScreen({ navigation }: any) {
                   }
                 }}
               />
-              {selectedShape === 'rectangle' && selectedPortionSize === 'size' && (
+              {selectedShape === 'rectangle' && selectedPortionVsSize === 'size' && (
                 <TextInput
                   style={[styles.filedBox, styles.fildText]}
                   placeholder="e.g. 15 (width)"
@@ -688,10 +691,10 @@ export default function AddRecipeScreen({ navigation }: any) {
         </View>
         <View>
           <Pressable style={styles.AddButton} onPress={addIngredientRow}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" style={styles.addIcon}>
-            <path d="M3.33252 7.99805H12.6636" stroke="white" stroke-width="1.33301" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M7.99805 3.33252V12.6636" stroke="white" stroke-width="1.33301" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
+            <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
+              <Path d="M3.33252 7.99805H12.6636" stroke="white" strokeWidth={1.33301} strokeLinecap="round" strokeLinejoin="round"/>
+              <Path d="M7.99805 3.33252V12.6636" stroke="white" strokeWidth={1.33301} strokeLinecap="round" strokeLinejoin="round"/>
+            </Svg>
             <Text style={styles.AddButtonText}>Add ingredient</Text>
           </Pressable>
         </View>

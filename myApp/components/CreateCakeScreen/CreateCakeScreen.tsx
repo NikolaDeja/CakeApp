@@ -12,8 +12,8 @@ type SelectItem = { key: string; value: string };
 
 export default function CreateCakeScreen({ navigation }: any) {
 
-    const [caketype, setCaketype] = useState('');
-  const [caketype2, setCaketype2] = useState('');
+    const [cakeType, setCakeType] = useState('');
+  const [cakeType2, setCakeType2] = useState('');
   const [showSecondCakeType, setShowSecondCakeType] = useState(false);
   const [layerCount, setLayerCount] = useState('1');
   const [layers, setLayers] = useState<string[]>(['', '', '', '', '', '']);
@@ -37,7 +37,7 @@ export default function CreateCakeScreen({ navigation }: any) {
   const [crunchOptions, setCrunchOptions] = useState<SelectItem[]>([]);
   const [outerCoatingOptions, setOuterCoatingOptions] = useState<SelectItem[]>([]);
   const [decorationsOptions, setDecorationsOptions] = useState<SelectItem[]>([]);
-  const [selectedPortionSize, setSelectedPortionSize] = useState<'portions' | 'size' | ''>('');
+  const [selectedPortionVsSize, setSelectedPortionVsSize] = useState<'portions' | 'size' | ''>('');
   const [selectedShape, setSelectedShape] = useState<'circle' | 'square' | 'rectangle' | 'heart' | ''>('');
   const [selectedAllergens, setSelectedAllergens] = useState<string[]>([]);
   const [selectedDecorations, setSelectedDecorations] = useState<string[]>([]);
@@ -50,15 +50,37 @@ export default function CreateCakeScreen({ navigation }: any) {
     : 0;
 
   const canCreate =
-    !!caketype &&
-    layerCountNumber > 0 &&
-    layers.slice(0, layerCountNumber).every((value) => !!value) &&
-    selectedPortionSize &&
+    !!selectedShape &&
+    !!selectedPortionVsSize &&
     !!portionSize &&
     !portionSizeError &&
-    !layerCountError &&
+    (selectedShape !== 'rectangle' || (!!portionSize2 && !portionSize2Error)) &&
     !!layerCount &&
-    (selectedShape !== 'rectangle' || (!!portionSize2 && !portionSize2Error));
+    !layerCountError &&
+    layerCountNumber > 0 &&
+    !!cakeType &&
+    layers.slice(0, layerCountNumber).every((value) => !!value) &&
+    !!outerLayer;
+
+  const getMissingRequirements = (): string[] => {
+    const missing: string[] = [];
+    if (!selectedShape) missing.push('Select a shape');
+    if (!selectedPortionVsSize) missing.push('Select portions or size mode');
+    if (!portionSize) missing.push('Enter a portion/size value');
+    if (portionSizeError) missing.push(`Portion size error: ${portionSizeError}`);
+    if (selectedShape === 'rectangle' && !portionSize2) missing.push('Enter width for rectangle');
+    if (selectedShape === 'rectangle' && portionSize2Error) missing.push(`Width error: ${portionSize2Error}`);
+    if (!layerCount) missing.push('Enter number of layers');
+    if (layerCountError) missing.push(`Layer count error: ${layerCountError}`);
+    if (layerCountNumber <= 0) missing.push('Layer count must be greater than 0');
+    if (!cakeType) missing.push('Select at least one cake type');
+    const numLayers = Math.min(6, Math.max(1, Number(layerCount)));
+    for (let i = 0; i < numLayers; i++) {
+      if (!layers[i]) missing.push(`Select a recipe for layer ${i + 1}`);
+    }
+    if (!outerLayer) missing.push('Select an outer coating');
+    return missing;
+  };
 
   const toggleAllergen = (allergen: string) => {
     setSelectedAllergens((prev) =>
@@ -263,10 +285,10 @@ export default function CreateCakeScreen({ navigation }: any) {
                   <Pressable
                     style={({ pressed }) => [
                       styles.optionsButtons,
-                      (pressed || selectedPortionSize === 'portions') && styles.optionsButtonsHover,
+                      (pressed || selectedPortionVsSize === 'portions') && styles.optionsButtonsHover,
                     ]}
                     onPress={() => {
-                      setSelectedPortionSize('portions');
+                      setSelectedPortionVsSize('portions');
                       setPortionSizeError(null);
                       setPortionSize2('');
                       setPortionSize2Error(null);
@@ -277,10 +299,10 @@ export default function CreateCakeScreen({ navigation }: any) {
                   <Pressable
                     style={({ pressed }) => [
                       styles.optionsButtons,
-                      (pressed || selectedPortionSize === 'size') && styles.optionsButtonsHover,
+                      (pressed || selectedPortionVsSize === 'size') && styles.optionsButtonsHover,
                     ]}
                     onPress={() => {
-                      setSelectedPortionSize('size');
+                      setSelectedPortionVsSize('size');
                       setPortionSizeError(null);
                       setPortionSize2('');
                       setPortionSize2Error(null);
@@ -290,11 +312,11 @@ export default function CreateCakeScreen({ navigation }: any) {
                   </Pressable>
                 </View>
               
-                {selectedPortionSize && (
+                {selectedPortionVsSize && (
                   <>
                     <TextInput
                       style={[styles.filedBox, styles.fildText]}
-                      placeholder={selectedPortionSize === 'portions' ? "e.g. 8, 12, 16" : selectedShape === 'rectangle' ? "e.g. 20 (length)" : "e.g. 20, 25, 30"}
+                      placeholder={selectedPortionVsSize === 'portions' ? "e.g. 8, 12, 16" : selectedShape === 'rectangle' ? "e.g. 20 (length)" : "e.g. 20, 25, 30"}
                       keyboardType="numeric"
                       value={portionSize}
                       onChangeText={(text) => {
@@ -317,7 +339,7 @@ export default function CreateCakeScreen({ navigation }: any) {
                         }
                       }}
                     />
-                    {selectedShape === 'rectangle' && selectedPortionSize === 'size' && (
+                    {selectedShape === 'rectangle' && selectedPortionVsSize === 'size' && (
                       <TextInput
                         style={[styles.filedBox, styles.fildText]}
                         placeholder="e.g. 15 (width)"
@@ -463,12 +485,12 @@ export default function CreateCakeScreen({ navigation }: any) {
                 <SelectList
                     boxStyles={styles.filedBox}
                     inputStyles={styles.fildText}
-                    setSelected={setCaketype}
+                    setSelected={setCakeType}
                     data={cakeTypeOptions}
                     placeholder="Select First Cake Type"
                 />
                 
-                {caketype && !showSecondCakeType && (
+                {cakeType && !showSecondCakeType && (
                   <Pressable 
                     style={styles.secondCakeButton}
                     onPress={() => setShowSecondCakeType(true)}
@@ -482,15 +504,15 @@ export default function CreateCakeScreen({ navigation }: any) {
                     <SelectList
                         boxStyles={styles.filedBox}
                         inputStyles={styles.fildText}
-                        setSelected={setCaketype2}
+                        setSelected={setCakeType2}
                         data={cakeTypeOptions}
                         placeholder="Select Second Cake Type"
                     />
-                    {caketype2 && (
+                    {cakeType2 && (
                       <Pressable 
                         style={styles.secondCakeButton}
                         onPress={() => {
-                          setCaketype2('');
+                          setCakeType2('');
                           setShowSecondCakeType(false);
                         }}
                       >
@@ -659,22 +681,33 @@ export default function CreateCakeScreen({ navigation }: any) {
               </View>
   
                   
-              <Pressable style={styles.getRecipeButton} onPress={() =>
+              <Pressable 
+                style={[styles.getRecipeButton, !canCreate && { opacity: 0.5 }]} 
+                disabled={!canCreate}
+                onPress={() =>
                   navigation.navigate("Recipe", {
-                      selectedPortionSize: selectedPortionSize,
+                      selectedPortionVsSize: selectedPortionVsSize,
                       portionSize: portionSize,
                       portionSize2: portionSize2,
                       selectedShape: selectedShape,
                       selectedAllergens: selectedAllergens,
                       layerCount: layerCountNumber,
-                      caketype: caketype,
-                      caketype2: caketype2,
+                      cakeType: cakeType,
+                      cakeType2: cakeType2,
                       layers: layers.slice(0, layerCountNumber),
                       selectedDecorations: selectedDecorations,
                       outerLayer: outerLayer,
                   })}>
                   <Text style={styles.getRecipeButtonText}>Get Your Recipe</Text>
               </Pressable>
+              {!canCreate && (
+                <View style={{ paddingHorizontal: 24, marginTop: 20, marginBottom: 20 }}>
+                  <Text style={[styles.stepsText, { color: '#d9534f', fontWeight: 'bold', marginBottom: 10 }]}>Please complete the following:</Text>
+                  {getMissingRequirements().map((req, idx) => (
+                    <Text key={idx} style={[styles.stepsText, { color: '#d9534f', marginBottom: 5 }]}>• {req}</Text>
+                  ))}
+                </View>
+              )}
           </View>
 
         </ScrollView>

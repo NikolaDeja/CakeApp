@@ -147,6 +147,21 @@ export function roundAmount(amount: number, unit: string): number {
 }
 
 /**
+ * Pick the item whose numeric key is closest to `target`. Returns null for an empty list.
+ * Ties go to the first candidate encountered.
+ */
+export function findClosestBy<T>(
+  items: T[],
+  target: number,
+  getValue: (item: T) => number
+): T | null {
+  if (!items.length) return null;
+  return items.reduce((best, cur) =>
+    Math.abs(getValue(cur) - target) < Math.abs(getValue(best) - target) ? cur : best
+  );
+}
+
+/**
  * Determine which dimension field to use for lookup in size_portion_guides.
  * When user enters one number in "size" mode, map it to the appropriate DB column.
  * @param shape - the selected shape

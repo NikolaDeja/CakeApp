@@ -21,12 +21,12 @@ export type RootStackParamList = {
   AddRecipe: undefined;
   CreateCake: undefined;
   Recipe: {
-    caketype: string;
-    caketype2?: string;
+    cakeType: string;
+    cakeType2?: string;
     layers: string[];
     outerLayer?: string;
     layerCount: number;
-    selectedPortionSize: 'portions' | 'size';
+    selectedPortionVsSize: 'portions' | 'size';
     portionSize: string;
     selectedShape: 'circle' | 'square' | 'rectangle' | 'heart';
     selectedAllergens: string[];

@@ -5,7 +5,8 @@ import Footer from '../Footer/Footer';
 import { supabase } from '../../lib/supabase';
 import { styles } from './RecipeScreen.styles';
 import { LinearGradient } from 'expo-linear-gradient';
-import { calculateArea, scaleIngredientsByArea } from '../../lib/scalingUtils';
+import Svg, { Path } from 'react-native-svg';
+import { calculateArea, scaleIngredientsByArea, findClosestBy, roundAmount } from '../../lib/scalingUtils';
 
 type IngredientRow = {
   name: string;
@@ -24,27 +25,22 @@ type RecipeWithIngredients = {
   }> | null;
 };
 
-type Section = {
-  title: string;
-  recipe: RecipeWithIngredients | null;
-};
-
 export default function RecipeScreen({ route }: any) {
   const {
-    caketype,
-    caketype2,
+    cakeType,
+    cakeType2,
     layers = [],
     outerLayer,
-    selectedPortionSize,
+    selectedPortionVsSize,
     portionSize,
     portionSize2,
     selectedShape,
   }: {
-    caketype?: string;
-    caketype2?: string;
+    cakeType?: string;
+    cakeType2?: string;
     layers?: string[];
     outerLayer?: string;
-    selectedPortionSize?: 'portions' | 'size';
+    selectedPortionVsSize?: 'portions' | 'size';
     portionSize?: string;
     portionSize2?: string;
     selectedShape?: 'circle' | 'square' | 'rectangle' | 'heart';
@@ -63,7 +59,7 @@ export default function RecipeScreen({ route }: any) {
 
         const names = Array.from(
           new Set(
-            [caketype, caketype2, ...layers, outerLayer].filter(
+            [cakeType, cakeType2, ...layers, outerLayer].filter(
               (n): n is string => !!n && n !== 'None'
             )
           )
@@ -104,8 +100,8 @@ export default function RecipeScreen({ route }: any) {
         // Calculate user's target size once (all recipes scale to same target)
         let userArea: number | null = null;
 
-        if (selectedPortionSize && portionSize && selectedShape) {
-          if (selectedPortionSize === 'size') {
+        if (selectedPortionVsSize && portionSize && selectedShape) {
+          if (selectedPortionVsSize === 'size') {
             // Size mode: compute the area directly from the user's input.
             const dimension1 = parseFloat(portionSize);
             
@@ -128,17 +124,24 @@ export default function RecipeScreen({ route }: any) {
               }
             }
           } else {
-            // Portions mode: look up the matching row in size_portion_guides.
+            // Portions mode: fall back to the closest portions entry for this shape,
+            // since the user's exact portion count may not be in size_portion_guides.
             try {
-              const { data: sizeData, error: sizeError } = await supabase
+              const targetPortions = parseInt(portionSize, 10);
+              const { data: guides, error: sizeError } = await supabase
                 .from('size_portion_guides')
-                .select('area_cm2')
-                .eq('shape', selectedShape)
-                .eq('portions', parseInt(portionSize, 10))
-                .maybeSingle();
+                .select('portions, area_cm2')
+                .eq('shape', selectedShape);
 
-              if (!sizeError && sizeData?.area_cm2) {
-                userArea = sizeData.area_cm2;
+              if (!sizeError && guides && guides.length > 0) {
+                const closest = findClosestBy(
+                  guides as Array<{ portions: number; area_cm2: number | null }>,
+                  targetPortions,
+                  (g) => g.portions
+                );
+                if (closest?.area_cm2) {
+                  userArea = closest.area_cm2;
+                }
               }
             } catch (e: any) {
               setError(`Error looking up user size: ${e.message}`);
@@ -181,19 +184,16 @@ export default function RecipeScreen({ route }: any) {
     };
 
     load();
-  }, [caketype, caketype2, outerLayer, JSON.stringify(layers), selectedPortionSize, portionSize, portionSize2, selectedShape]);
+  }, [cakeType, cakeType2, outerLayer, JSON.stringify(layers), selectedPortionVsSize, portionSize, portionSize2, selectedShape]);
 
-  const sections: Section[] = useMemo(() => {
-    const result: Section[] = [];
-
-    if (caketype) {
-      result.push({ title: 'Cake base', recipe: recipesByName[caketype] ?? null });
+  const sections: (RecipeWithIngredients | null)[] = useMemo(() => {
+    const result: (RecipeWithIngredients | null)[] = [];
+    if (cakeType) {
+      result.push(recipesByName[cakeType] ?? null);
     }
-    if (caketype2) {
-      result.push({ title: 'Second cake base', recipe: recipesByName[caketype2] ?? null });
+    if (cakeType2) {
+      result.push(recipesByName[cakeType2] ?? null);
     }
-
-    // Group layer positions by recipe name so duplicates render once.
     const positionsByName = new Map<string, number[]>();
     layers.forEach((name, idx) => {
       if (!name || name === 'None') return;
@@ -201,30 +201,32 @@ export default function RecipeScreen({ route }: any) {
       arr.push(idx + 1);
       positionsByName.set(name, arr);
     });
-
     for (const [name, positions] of positionsByName.entries()) {
-      const title =
-        positions.length === 1
-          ? `Layer ${positions[0]}`
-          : `Layers ${positions.join(', ')}`;
-      result.push({ title, recipe: recipesByName[name] ?? null });
+      const baseRecipe = recipesByName[name];
+      const recipe: RecipeWithIngredients | null = baseRecipe
+        ? {
+            ...baseRecipe,
+            ingredients: baseRecipe.ingredients.map((ing) => ({
+              ...ing,
+              amount: roundAmount(ing.amount * positions.length, ing.unit),
+            })),
+          }
+        : null;
+      result.push(recipe);
     }
-
     if (outerLayer) {
-      result.push({ title: 'Outer layer', recipe: recipesByName[outerLayer] ?? null });
+      result.push(recipesByName[outerLayer] ?? null);
     }
-
     return result;
-  }, [caketype, caketype2, layers, outerLayer, recipesByName]);
+  }, [cakeType, cakeType2, layers, outerLayer, recipesByName]);
 
   // Calculate shopping list by combining all ingredients
   const shoppingList: IngredientRow[] = useMemo(() => {
     const ingredientMap = new Map<string, { amount: number; unit: string }>();
-
-    // Collect all ingredients from all recipes
+    // Collect all ingredients
     sections.forEach((section) => {
-      if (section.recipe && section.recipe.ingredients) {
-        section.recipe.ingredients.forEach((ing) => {
+      if (section && section.ingredients) {
+        section.ingredients.forEach((ing) => {
           const key = `${ing.name}|${ing.unit}`;
           if (ingredientMap.has(key)) {
             const existing = ingredientMap.get(key)!;
@@ -235,8 +237,7 @@ export default function RecipeScreen({ route }: any) {
         });
       }
     });
-
-    // Convert to array and sort
+    
     return Array.from(ingredientMap.entries())
       .map(([key, value]) => ({
         name: key.split('|')[0],
@@ -247,10 +248,8 @@ export default function RecipeScreen({ route }: any) {
   }, [sections]);
 
   const Block = ({
-    title,
     recipe,
   }: {
-    title: string;
     recipe: RecipeWithIngredients | null;
   }) => (
     <View>
@@ -307,15 +306,15 @@ export default function RecipeScreen({ route }: any) {
               {shoppingList.length > 0 && (
                 <View style={styles.shoppingListContainer}>
                   <View style={styles.shoppingListHeader}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" >
-                      <path d="M12.4967 9.16441L11.6636 16.6626" stroke="#FF9ECD" stroke-width="1.66626" stroke-linecap="round" stroke-linejoin="round"/>
-                      <path d="M15.8296 9.16442L12.4971 3.33252" stroke="#FF9ECD" stroke-width="1.66626" stroke-linecap="round" stroke-linejoin="round"/>
-                      <path d="M1.66602 9.16441H18.3286" stroke="#FF9ECD" stroke-width="1.66626" stroke-linecap="round" stroke-linejoin="round"/>
-                      <path d="M2.91602 9.16441L4.24902 15.3296C4.32692 15.7116 4.53632 16.0542 4.84078 16.2978C5.14524 16.5413 5.52547 16.6704 5.91528 16.6626H14.0799C14.4698 16.6704 14.85 16.5413 15.1544 16.2978C15.4589 16.0542 15.6683 15.7116 15.7462 15.3296L17.1625 9.16441" stroke="#FF9ECD" stroke-width="1.66626" stroke-linecap="round" stroke-linejoin="round"/>
-                      <path d="M3.74902 12.9135H16.246" stroke="#FF9ECD" stroke-width="1.66626" stroke-linecap="round" stroke-linejoin="round"/>
-                      <path d="M4.16553 9.16442L7.49804 3.33252" stroke="#FF9ECD" stroke-width="1.66626" stroke-linecap="round" stroke-linejoin="round"/>
-                      <path d="M7.49805 9.16441L8.33118 16.6626" stroke="#FF9ECD" stroke-width="1.66626" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
+                    <Svg width={20} height={20} viewBox="0 0 20 20" fill="none">
+                      <Path d="M12.4967 9.16441L11.6636 16.6626" stroke="#FF9ECD" strokeWidth={1.66626} strokeLinecap="round" strokeLinejoin="round"/>
+                      <Path d="M15.8296 9.16442L12.4971 3.33252" stroke="#FF9ECD" strokeWidth={1.66626} strokeLinecap="round" strokeLinejoin="round"/>
+                      <Path d="M1.66602 9.16441H18.3286" stroke="#FF9ECD" strokeWidth={1.66626} strokeLinecap="round" strokeLinejoin="round"/>
+                      <Path d="M2.91602 9.16441L4.24902 15.3296C4.32692 15.7116 4.53632 16.0542 4.84078 16.2978C5.14524 16.5413 5.52547 16.6704 5.91528 16.6626H14.0799C14.4698 16.6704 14.85 16.5413 15.1544 16.2978C15.4589 16.0542 15.6683 15.7116 15.7462 15.3296L17.1625 9.16441" stroke="#FF9ECD" strokeWidth={1.66626} strokeLinecap="round" strokeLinejoin="round"/>
+                      <Path d="M3.74902 12.9135H16.246" stroke="#FF9ECD" strokeWidth={1.66626} strokeLinecap="round" strokeLinejoin="round"/>
+                      <Path d="M4.16553 9.16442L7.49804 3.33252" stroke="#FF9ECD" strokeWidth={1.66626} strokeLinecap="round" strokeLinejoin="round"/>
+                      <Path d="M7.49805 9.16441L8.33118 16.6626" stroke="#FF9ECD" strokeWidth={1.66626} strokeLinecap="round" strokeLinejoin="round"/>
+                    </Svg>
                     <Text style={styles.shoppingListTitle}>Shopping List</Text>
                   </View>
                   <View style={styles.ingredientsList}>
@@ -360,7 +359,7 @@ export default function RecipeScreen({ route }: any) {
                 </View>
               )}
               {sections.map((s, idx) => (
-                <Block key={`${s.title}-${idx}`} title={s.title} recipe={s.recipe} />
+                <Block key={idx} recipe={s} />
               ))}
             </View>
           )}
