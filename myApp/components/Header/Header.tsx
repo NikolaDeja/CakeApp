@@ -27,7 +27,7 @@ export default function Header() {
                     </Svg>
                     </View>
             </Pressable>
-            <Text style={styles.headerText} onPress={() => navigation.navigate("Home")}>Cake App</Text>
+            <Text style={styles.headerText} onPress={() => navigation.navigate("Home")}>CakeIt</Text>
             <View style={{ flex: 1 }} />
             <Pressable style={styles.signOutButton} onPress={() => supabase.auth.signOut()}>
                 <Text style={styles.signOutText}>Sign out</Text>

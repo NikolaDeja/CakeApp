@@ -109,7 +109,7 @@ export default function CreateCakeScreen({ navigation }: any) {
       case 'Filling':
         options = fillingOptions;
         break;
-      case 'Ganash':
+      case 'Ganache':
         options = ganacheOptions;
         break;
       case 'Crunch':
@@ -372,7 +372,7 @@ export default function CreateCakeScreen({ navigation }: any) {
 
 
               <View style={styles.stepBox}>
-                <Text style={styles.stepsText}>Step 3: Allergenes to avoid</Text>
+                <Text style={styles.stepsText}>Step 3: Allergens to avoid</Text>
                 {(() => {
                   const allergenPairs = [];
                   for (let i = 0; i < allergensList.length; i += 2) {
@@ -536,13 +536,13 @@ export default function CreateCakeScreen({ navigation }: any) {
                   <View style={styles.helpTooltipContainer}>
                     <Text style={styles.helpTooltipHeader}>Layer types explained</Text>
                     <Text style={styles.helpTooltipText}>
-                      Cream: soft and rich layer for a smooth texture. Filling: fruity or sweet centre that adds flavour. Ganash: chocolate-based layer for a decadent finish. Crunch: crispy layer to add texture and contrast.
+                      Cream: soft and rich layer for a smooth texture. Filling: fruity or sweet centre that adds flavour. Ganache: chocolate-based layer for a decadent finish. Crunch: crispy layer to add texture and contrast.
                     </Text>
                   </View>
                 )}
                 {Array.from({ length: layerCountNumber || 1 }, (_, idx) => {
                   const ordinal = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth'][idx];
-                  const layerTypeOptions = ['Cream', 'Filling', 'Ganash', 'Crunch'];
+                  const layerTypeOptions = ['Cream', 'Filling', 'Ganache', 'Crunch'];
                   return (
                     <View key={idx}>
                       <Text style={[styles.stepsText, { marginTop: 20, color: '#333', fontWeight: 'bold' }]}>{ordinal} Layer</Text>
@@ -579,15 +579,15 @@ export default function CreateCakeScreen({ navigation }: any) {
                         <Pressable
                           style={({ pressed }) => [
                             styles.optionsButtons,
-                            (pressed || layerTypes[idx] === 'Ganash') && styles.optionsButtonsHover,
+                            (pressed || layerTypes[idx] === 'Ganache') && styles.optionsButtonsHover,
                           ]}
                           onPress={() => {
                             const newLayerTypes = [...layerTypes];
-                            newLayerTypes[idx] = 'Ganash';
+                            newLayerTypes[idx] = 'Ganache';
                             setLayerTypes(newLayerTypes);
                           }}
                         >
-                          <Text style={styles.optionsButtonsText}>Ganash</Text>
+                          <Text style={styles.optionsButtonsText}>Ganache</Text>
                         </Pressable>
                         <Pressable
                           style={({ pressed }) => [

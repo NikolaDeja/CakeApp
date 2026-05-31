@@ -188,11 +188,23 @@ export default function RecipeScreen({ route }: any) {
 
   const sections: (RecipeWithIngredients | null)[] = useMemo(() => {
     const result: (RecipeWithIngredients | null)[] = [];
+    // When the user picks two cake bases they share one cake-sized volume, so halve each.
+    const cakeBaseDivisor = cakeType && cakeType2 ? 2 : 1;
+    const scaleCakeBase = (r: RecipeWithIngredients | null): RecipeWithIngredients | null =>
+      !r || cakeBaseDivisor === 1
+        ? r
+        : {
+            ...r,
+            ingredients: r.ingredients.map((ing) => ({
+              ...ing,
+              amount: roundAmount(ing.amount / cakeBaseDivisor, ing.unit),
+            })),
+          };
     if (cakeType) {
-      result.push(recipesByName[cakeType] ?? null);
+      result.push(scaleCakeBase(recipesByName[cakeType] ?? null));
     }
     if (cakeType2) {
-      result.push(recipesByName[cakeType2] ?? null);
+      result.push(scaleCakeBase(recipesByName[cakeType2] ?? null));
     }
     const positionsByName = new Map<string, number[]>();
     layers.forEach((name, idx) => {

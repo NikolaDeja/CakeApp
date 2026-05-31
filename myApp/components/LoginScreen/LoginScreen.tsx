@@ -61,7 +61,7 @@ export default function LoginScreen() {
       style={{ flex: 1, backgroundColor: '#FFF' }}
     >
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <Text style={styles.brand}>Cake App</Text>
+        <Text style={styles.brand}>CakeIt</Text>
         <Text style={styles.subtitle}>
           {mode === 'signin' ? 'Welcome back! Sign in to continue.' : 'Create an account to get started.'}
         </Text>

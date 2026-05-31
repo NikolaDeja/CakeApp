@@ -25,7 +25,7 @@ export default function HomeScreen({ navigation }: any) {
                   <Text style={styles.createbuttonText}>Create Your Cake</Text>
               </Pressable>
               <Pressable style={styles.addbutton} onPress={() => navigation.navigate("AddRecipe")}>
-                  <Text style={styles.addbuttonText}>Add Your Recepie</Text>
+                  <Text style={styles.addbuttonText}>Add Your Recipe</Text>
               </Pressable>
             </View>
             <Footer />
